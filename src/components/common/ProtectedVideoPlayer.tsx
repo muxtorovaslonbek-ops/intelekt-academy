@@ -26,8 +26,8 @@ export const ProtectedVideoPlayer: React.FC<ProtectedVideoPlayerProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const activeVideoId = videoId || '4a5e3f42-4f05-4c07-9b22-861c8a1495c2';
-  const activeLibraryId = libraryId || '380785';
+  const activeVideoId = videoId || '';
+  const activeLibraryId = libraryId || '';
 
   // Bunny.net iframe URL with secure parameters
   const bunnyUrl = `https://iframe.mediadelivery.net/embed/${activeLibraryId}/${activeVideoId}?autoplay=false&loop=false&muted=false&preload=true&responsive=true`;
@@ -64,7 +64,7 @@ export const ProtectedVideoPlayer: React.FC<ProtectedVideoPlayerProps> = ({
           onEnded={handleEnd}
           className="w-full h-full object-contain pointer-events-auto bg-black"
         />
-      ) : (
+      ) : activeVideoId && activeLibraryId ? (
         <iframe
           ref={iframeRef}
           src={bunnyUrl}
@@ -74,6 +74,10 @@ export const ProtectedVideoPlayer: React.FC<ProtectedVideoPlayerProps> = ({
           allowFullScreen
           onEnded={handleEnd}
         />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
+          Ushbu dars uchun Bunny video sozlanmagan.
+        </div>
       )}
 
       {/* Context Menu / Download Disable Shield */}

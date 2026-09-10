@@ -113,7 +113,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
             <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-800 bg-black">
               <ProtectedVideoPlayer
                 directUrl={activeLesson?.videoUrl}
-                videoId={activeLesson?.bunnyVideoId || '4a5e3f42-4f05-4c07-9b22-861c8a1495c2'}
+                videoId={activeLesson?.bunnyVideoId}
+                libraryId={activeLesson?.libraryId}
                 title={activeLesson?.title || activeCourse.title}
                 duration={activeLesson?.duration}
               />
