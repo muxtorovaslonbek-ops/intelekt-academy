@@ -407,7 +407,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
     setCurrentUserId(newUser.id);
-    upsertSupabaseProfile(newUser);
+    const profileResult = await upsertSupabaseProfile(newUser);
+    if (!profileResult.success) {
+      setUsers((prev) => prev.filter((u) => u.id !== newUser.id));
+      setCurrentUserId(null);
+      return false;
+    }
     return true;
   };
 

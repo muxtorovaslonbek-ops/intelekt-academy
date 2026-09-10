@@ -15,6 +15,10 @@ create table if not exists public.profiles (
   updated_at timestamptz default now()
 );
 
+-- Profiles also contain custom phone/Telegram/admin accounts that do not have
+-- a row in auth.users, so do not enforce an auth.users foreign key here.
+alter table public.profiles drop constraint if exists profiles_id_fkey;
+
 create table if not exists public.courses (
   id uuid primary key default uuid_generate_v4(),
   title text not null,

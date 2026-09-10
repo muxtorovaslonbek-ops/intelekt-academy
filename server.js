@@ -82,13 +82,7 @@ app.post('/api/upload-media', upload.single('file'), async (req, res) => {
   }
 
   if (!bunnyApiKey || !bunnyStorageZone) {
-    return res.status(200).json({
-      ok: true,
-      id: `local-${Date.now()}`,
-      url: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
-      publicUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
-      note: 'Bunny.net env not configured; using data URL fallback',
-    });
+    return res.status(503).json({ ok: false, error: 'Bunny storage is not configured; use Supabase Storage fallback' });
   }
 
   try {

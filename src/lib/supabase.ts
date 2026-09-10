@@ -421,9 +421,11 @@ export async function updateUserProfile(
       if (!error && data) return data;
       if (error) {
         console.warn('Supabase profile update warning:', error.message);
+        throw new Error(error.message);
       }
     } catch (e) {
       console.warn('Supabase profile update exception:', e);
+      if (import.meta.env.PROD) throw e;
     }
   }
 

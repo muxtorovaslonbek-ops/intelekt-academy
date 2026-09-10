@@ -104,22 +104,24 @@ export async function saveMediaFile(file: File): Promise<StoredMediaFile & { url
       }
     }
   } catch (err) {
+    try {
+      const publicUrl = await uploadPublicMedia(file);
+      return {
+        id: `supabase_${Date.now()}`,
+        name: file.name,
+        type,
+        sizeFormatted,
+        sizeBytes: file.size,
+        mimeType: file.type || 'application/octet-stream',
+        uploadedAt: new Date().toISOString(),
+        url: publicUrl,
+      };
+    } catch (storageError) {
+      console.warn('Supabase media fallback failed:', storageError);
+    }
+
     if (import.meta.env.PROD) {
-      try {
-        const publicUrl = await uploadPublicMedia(file);
-        return {
-          id: `supabase_${Date.now()}`,
-          name: file.name,
-          type,
-          sizeFormatted,
-          sizeBytes: file.size,
-          mimeType: file.type || 'application/octet-stream',
-          uploadedAt: new Date().toISOString(),
-          url: publicUrl,
-        };
-      } catch (storageError) {
-        console.warn('Supabase media fallback failed:', storageError);
-      }
+      throw new Error('Fayl serverga yuklanmadi. Supabase Storage yoki Bunny sozlamalarini tekshiring.');
     }
     if (import.meta.env.PROD) {
       throw new Error('Media serveri ishlamayapti. Bunny.net sozlamalarini tekshiring.');
