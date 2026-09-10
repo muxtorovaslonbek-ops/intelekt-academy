@@ -77,6 +77,23 @@ export async function saveMediaFile(file: File): Promise<StoredMediaFile & { url
   const type = getFileType(file.type, file.name);
   const sizeFormatted = formatFileSize(file.size);
 
+  // Supabase Storage is the durable store for PDFs, images, and attachments.
+  try {
+    const publicUrl = await uploadPublicMedia(file);
+    return {
+      id: `supabase_${Date.now()}`,
+      name: file.name,
+      type,
+      sizeFormatted,
+      sizeBytes: file.size,
+      mimeType: file.type || 'application/octet-stream',
+      uploadedAt: new Date().toISOString(),
+      url: publicUrl,
+    };
+  } catch (storageError) {
+    console.warn('Supabase media upload unavailable, trying backend:', storageError);
+  }
+
   try {
     const apiBase = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
     const form = new FormData();
@@ -104,22 +121,6 @@ export async function saveMediaFile(file: File): Promise<StoredMediaFile & { url
       }
     }
   } catch (err) {
-    try {
-      const publicUrl = await uploadPublicMedia(file);
-      return {
-        id: `supabase_${Date.now()}`,
-        name: file.name,
-        type,
-        sizeFormatted,
-        sizeBytes: file.size,
-        mimeType: file.type || 'application/octet-stream',
-        uploadedAt: new Date().toISOString(),
-        url: publicUrl,
-      };
-    } catch (storageError) {
-      console.warn('Supabase media fallback failed:', storageError);
-    }
-
     if (import.meta.env.PROD) {
       throw new Error('Fayl serverga yuklanmadi. Supabase Storage yoki Bunny sozlamalarini tekshiring.');
     }

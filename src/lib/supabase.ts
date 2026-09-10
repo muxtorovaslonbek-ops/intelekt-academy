@@ -262,16 +262,16 @@ export async function fetchSupabaseAnnouncements(): Promise<Announcement[] | nul
   }));
 }
 
-export async function uploadPublicMedia(file: File, folder = 'lesson-media'): Promise<string> {
+export async function uploadPublicMedia(file: File, folder = 'lesson-media', bucket = 'media'): Promise<string> {
   if (!isSupabaseConfigured) throw new Error('Supabase sozlanmagan.');
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `${folder}/${crypto.randomUUID()}-${safeName}`;
-  const { error } = await supabase.storage.from('media').upload(path, file, {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
     contentType: file.type || 'application/octet-stream',
     upsert: false,
   });
   if (error) throw new Error(error.message);
-  const { data } = supabase.storage.from('media').getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   if (!data.publicUrl) throw new Error('Media public URL yaratilmadi.');
   return data.publicUrl;
 }
@@ -350,6 +350,13 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
   if (isSupabaseConfigured) {
     try {
+      // Supabase Storage is the primary profile-image store; it works without Bunny.
+      return await uploadPublicMedia(file, `avatars/${userId}`, 'avatars');
+    } catch (storageError) {
+      console.warn('Supabase avatar upload error:', storageError);
+    }
+
+    try {
       const form = new FormData();
       form.append('file', file, `${userId}-${file.name}`);
       const apiBase = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
@@ -360,12 +367,6 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
       if (mediaResponse.ok) {
         const media = await mediaResponse.json();
         if (media.publicUrl || media.url) return media.publicUrl || media.url;
-      }
-
-      try {
-        return await uploadPublicMedia(file, `avatars/${userId}`);
-      } catch (storageError) {
-        console.warn('Supabase media avatar upload error:', storageError);
       }
 
       const fileExt = file.name.split('.').pop();
