@@ -336,6 +336,18 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
   if (isSupabaseConfigured) {
     try {
+      const form = new FormData();
+      form.append('file', file, `${userId}-${file.name}`);
+      const apiBase = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
+      const mediaResponse = await fetch(`${apiBase.replace(/\/$/, '')}/upload-media`, {
+        method: 'POST',
+        body: form,
+      });
+      if (mediaResponse.ok) {
+        const media = await mediaResponse.json();
+        if (media.publicUrl || media.url) return media.publicUrl || media.url;
+      }
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${userId}/${Math.random().toString(36).substring(2)}.${fileExt}`;
 
