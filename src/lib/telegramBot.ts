@@ -273,7 +273,6 @@ export function startTelegramBotPolling(
           const text = msg.text.trim();
           const chatId = msg.chat.id;
           const fromUser = msg.from;
-          const currentSession = getActiveTelegramAuthSession();
 
           // Check if user started with /start auth_XXXXXX or sent 6-digit code
           const matchCode = text.match(/\/start\s+auth_(\d{6})/i) || text.match(/^auth_(\d{6})$/i) || text.match(/^(\d{6})$/);
@@ -298,21 +297,19 @@ export function startTelegramBotPolling(
             }
           } else if (text.startsWith('/start') || text.startsWith('/code')) {
             // General /start or /code command
-            const codeToSend = currentSession?.code || generateVerificationCode();
+            const codeToSend = generateVerificationCode();
             registerValidCode(codeToSend, {
               username: fromUser.username ? `@${fromUser.username}` : undefined,
               name: `${fromUser.first_name || ''} ${fromUser.last_name || ''}`.trim(),
               chatId,
             });
 
-            if (!currentSession) {
-              createTelegramAuthSession({
-                firstName: fromUser.first_name || 'Talaba',
-                lastName: fromUser.last_name || '',
-                phoneNumber: '',
-                telegramHandle: fromUser.username ? `@${fromUser.username}` : undefined,
-              });
-            }
+            createTelegramAuthSession({
+              firstName: fromUser.first_name || 'Talaba',
+              lastName: fromUser.last_name || '',
+              phoneNumber: '',
+              telegramHandle: fromUser.username ? `@${fromUser.username}` : undefined,
+            });
 
             const welcomeMsg = `Assalomu alaykum, <b>${fromUser.first_name || 'Talaba'}</b>! 🎓\n\n` +
               `EduPlatform innovatsion ta'lim portalining rasmiy tasdiqlash botiga (@${TELEGRAM_BOT_USERNAME}) xush kelibsiz!\n\n` +
@@ -327,7 +324,7 @@ export function startTelegramBotPolling(
             }
           } else {
             // Reply to any other text with assistance and quick code
-            const quickCode = currentSession?.code || generateVerificationCode();
+            const quickCode = generateVerificationCode();
             registerValidCode(quickCode, {
               username: fromUser.username ? `@${fromUser.username}` : undefined,
               name: `${fromUser.first_name || ''} ${fromUser.last_name || ''}`.trim(),
