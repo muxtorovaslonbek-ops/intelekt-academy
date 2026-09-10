@@ -65,6 +65,31 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const CANONICAL_ADMIN_ID = '00000000-0000-0000-0000-000000000001';
+
+function normalizeUsers(source: User[]): User[] {
+  const seen = new Set<string>();
+  let admin: User | null = null;
+  const result: User[] = [];
+
+  for (const item of source) {
+    const isAdmin = item.role === 'admin';
+    if (isAdmin) {
+      if (!admin) {
+        admin = { ...item, id: CANONICAL_ADMIN_ID, role: 'admin', status: 'approved' };
+      }
+      continue;
+    }
+
+    const identity = item.id || item.email?.toLowerCase() || item.phoneNumber || `${item.firstName}-${item.lastName}`;
+    if (!seen.has(identity)) {
+      seen.add(identity);
+      result.push(item);
+    }
+  }
+
+  return admin ? [admin, ...result] : result;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<User[]>(() => {
@@ -83,9 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             phoneNumber: '+998 90 123 45 67',
             bio: "AI Future platformasi asoschisi va bosh ma'muri.",
           };
-          return parsed.filter((u: User) => !u.id.startsWith('demo-'));
+          return normalizeUsers(parsed.filter((u: User) => !u.id.startsWith('demo-')));
         }
-        return [INITIAL_USERS[0], ...parsed.filter((u: User) => !u.id.startsWith('demo-'))];
+        return normalizeUsers([INITIAL_USERS[0], ...parsed.filter((u: User) => !u.id.startsWith('demo-'))]);
       } catch (e) {
         console.error('Failed to parse saved users', e);
       }
@@ -113,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!combined.some((u) => u.role === 'admin')) {
               combined.unshift(admin);
             }
-            return combined;
+            return normalizeUsers(combined);
           });
         }
       } catch (err) {
@@ -128,6 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Real-time synchronization with Firestore Users Collection
   useEffect(() => {
+    if (isSupabaseConfigured) return;
+
     // Initial fetch from Firestore
     fetchFirebaseUsers()
       .then((remoteUsers) => {
@@ -139,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!map.has(admin.id) && !Array.from(map.values()).some((u) => u.role === 'admin')) {
               map.set(admin.id, admin);
             }
-            return Array.from(map.values());
+            return normalizeUsers(Array.from(map.values()));
           });
         }
       })
@@ -155,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!map.has(admin.id) && !Array.from(map.values()).some((u) => u.role === 'admin')) {
             map.set(admin.id, admin);
           }
-          return Array.from(map.values());
+          return normalizeUsers(Array.from(map.values()));
         });
       }
     });
@@ -165,6 +192,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
+    if (isSupabaseConfigured) return;
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         try {
@@ -403,7 +432,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const lName = parts.slice(1).join(' ') || 'Foydalanuvchisi';
       const isAdmin = cleanEmail === 'muxtorovaslonbek@gmail.com';
       const newUser: User = {
-        id: `user-${Date.now()}`,
+        id: crypto.randomUUID(),
         firstName: fName,
         lastName: lName,
         phoneNumber: phone || '+998 90 000 00 00',
@@ -442,7 +471,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fName = parts[0] || `@${cleanHandle}`;
       const lName = parts.slice(1).join(' ') || 'Foydalanuvchisi';
       const newUser: User = {
-        id: `user-${Date.now()}`,
+        id: crypto.randomUUID(),
         firstName: fName,
         lastName: lName,
         phoneNumber: phone || '+998 90 000 00 00',
@@ -481,7 +510,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? emailOrIdentifier.trim().toLowerCase()
         : `${cleanFirst.toLowerCase().replace(/\s+/g, '')}.${cleanLast.toLowerCase().replace(/\s+/g, '')}@student.edu`;
 
-    let generatedId = `user-${Date.now()}`;
+    let generatedId: string = crypto.randomUUID();
 
     // If Supabase is configured and provider is email, register Supabase user
     if (isSupabaseConfigured && provider === 'email') {
@@ -583,6 +612,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUsers((prev) => [adminUser, ...prev.filter((u) => u.id !== adminUser.id && u.role !== 'admin')]);
     setCurrentUserId(adminUser.id);
+    upsertSupabaseProfile(adminUser).catch(() => {});
     upsertFirebaseUserProfile(adminUser).catch(() => {});
     return { success: true };
   };
@@ -590,7 +620,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const addUser = (userData: Omit<User, 'id' | 'joinedDate'>) => {
     const newUser: User = {
       ...userData,
-      id: `user-${Date.now()}`,
+      id: crypto.randomUUID(),
       joinedDate: new Date().toISOString().split('T')[0],
       avatarUrl: userData.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
     };

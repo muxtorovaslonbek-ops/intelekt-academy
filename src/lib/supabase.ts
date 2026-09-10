@@ -368,6 +368,10 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
     }
   }
 
+  if (import.meta.env.PROD) {
+    throw new Error('Profil rasmi serverga saqlanmadi. Storage yoki Bunny sozlamalarini tekshiring.');
+  }
+
   // Graceful local base64 fallback agar Supabase storage bucket ulanmagan bo'lsa
   return new Promise<string>((resolve) => {
     const reader = new FileReader();

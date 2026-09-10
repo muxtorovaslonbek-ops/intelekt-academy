@@ -37,6 +37,25 @@ interface CourseContextType {
 
 const CourseContext = createContext<CourseContextType | undefined>(undefined);
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function normalizeCourseIds(items: Course[]): Course[] {
+  return items.map((course) => {
+    const courseId = isUuid(course.id) ? course.id : crypto.randomUUID();
+    return {
+      ...course,
+      id: courseId,
+      lessons: course.lessons.map((lesson) => ({
+        ...lesson,
+        id: isUuid(lesson.id) ? lesson.id : crypto.randomUUID(),
+        courseName: course.title,
+      })),
+    };
+  });
+}
+
 export function CourseProvider({ children }: { children: React.ReactNode }) {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
@@ -44,19 +63,20 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
     const version = localStorage.getItem('eduplatform-courses-version');
     if (version !== 'v3') {
       localStorage.setItem('eduplatform-courses-version', 'v3');
-      localStorage.setItem('eduplatform-courses', JSON.stringify(INITIAL_COURSES));
-      return INITIAL_COURSES;
+      const normalized = normalizeCourseIds(INITIAL_COURSES);
+      localStorage.setItem('eduplatform-courses', JSON.stringify(normalized));
+      return normalized;
     }
     const saved = localStorage.getItem('eduplatform-courses');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return normalizeCourseIds(parsed);
       } catch (e) {
         console.error('Failed to parse saved courses', e);
       }
     }
-    return INITIAL_COURSES;
+    return normalizeCourseIds(INITIAL_COURSES);
   });
 
   // Sync with Supabase on mount if configured
@@ -65,7 +85,12 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
       fetchSupabaseCourses().then((supabaseCourses) => {
         if (supabaseCourses && supabaseCourses.length > 0) {
           setCourses(supabaseCourses);
+          return;
         }
+        courses.forEach((course) => {
+          upsertSupabaseCourse(course);
+          course.lessons.forEach((lesson) => upsertSupabaseLesson(course.id, course.title, lesson));
+        });
       });
     }
   }, []);
@@ -139,6 +164,7 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
     setCourses((prev) =>
       prev.map((c) => {
         if (c.id === courseId) {
+          upsertSupabaseCourse(c);
           upsertSupabaseLesson(courseId, c.title, newLesson);
           return {
             ...c,

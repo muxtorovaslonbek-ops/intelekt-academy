@@ -70,7 +70,7 @@ export function fileToDataUrl(file: File | Blob): Promise<string> {
 }
 
 /**
- * Uploads a file through the local backend API when available; otherwise falls back to IndexedDB.
+ * Uploads a file through the backend API. Browser-only storage is retained only for local development.
  */
 export async function saveMediaFile(file: File): Promise<StoredMediaFile & { url: string }> {
   const type = getFileType(file.type, file.name);
@@ -103,7 +103,14 @@ export async function saveMediaFile(file: File): Promise<StoredMediaFile & { url
       }
     }
   } catch (err) {
+    if (import.meta.env.PROD) {
+      throw new Error('Media serveri ishlamayapti. Bunny.net sozlamalarini tekshiring.');
+    }
     console.warn('Backend upload unavailable, falling back to local storage:', err);
+  }
+
+  if (import.meta.env.PROD) {
+    throw new Error('Fayl serverga yuklanmadi. Bunny.net CDN sozlamalarini to‘ldiring.');
   }
 
   const id = `media_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
