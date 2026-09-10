@@ -81,3 +81,35 @@ create table if not exists public.feedback (
 create index if not exists profiles_email_idx on public.profiles(email);
 create index if not exists courses_status_idx on public.courses(status);
 create index if not exists lessons_course_id_idx on public.lessons(course_id);
+
+-- The app uses its own approval flow and does not require Supabase Auth for
+-- the admin account, so the public client needs explicit table policies.
+alter table public.profiles enable row level security;
+alter table public.courses enable row level security;
+alter table public.lessons enable row level security;
+alter table public.announcements enable row level security;
+alter table public.feedback enable row level security;
+
+drop policy if exists profiles_public_access on public.profiles;
+create policy profiles_public_access on public.profiles for all to anon, authenticated using (true) with check (true);
+drop policy if exists courses_public_access on public.courses;
+create policy courses_public_access on public.courses for all to anon, authenticated using (true) with check (true);
+drop policy if exists lessons_public_access on public.lessons;
+create policy lessons_public_access on public.lessons for all to anon, authenticated using (true) with check (true);
+drop policy if exists announcements_public_access on public.announcements;
+create policy announcements_public_access on public.announcements for all to anon, authenticated using (true) with check (true);
+drop policy if exists feedback_public_access on public.feedback;
+create policy feedback_public_access on public.feedback for all to anon, authenticated using (true) with check (true);
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do update set public = true;
+
+insert into storage.buckets (id, name, public)
+values ('media', 'media', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists avatars_public_access on storage.objects;
+create policy avatars_public_access on storage.objects for all to anon, authenticated
+using (bucket_id in ('avatars', 'media'))
+with check (bucket_id in ('avatars', 'media'));

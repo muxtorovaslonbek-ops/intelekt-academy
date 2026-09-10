@@ -262,6 +262,20 @@ export async function fetchSupabaseAnnouncements(): Promise<Announcement[] | nul
   }));
 }
 
+export async function uploadPublicMedia(file: File, folder = 'lesson-media'): Promise<string> {
+  if (!isSupabaseConfigured) throw new Error('Supabase sozlanmagan.');
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${folder}/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage.from('media').upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from('media').getPublicUrl(path);
+  if (!data.publicUrl) throw new Error('Media public URL yaratilmadi.');
+  return data.publicUrl;
+}
+
 // Helper: Fetch live courses from Supabase
 export async function fetchSupabaseCourses(): Promise<Course[] | null> {
   if (!isSupabaseConfigured) return null;
@@ -346,6 +360,12 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
       if (mediaResponse.ok) {
         const media = await mediaResponse.json();
         if (media.publicUrl || media.url) return media.publicUrl || media.url;
+      }
+
+      try {
+        return await uploadPublicMedia(file, `avatars/${userId}`);
+      } catch (storageError) {
+        console.warn('Supabase media avatar upload error:', storageError);
       }
 
       const fileExt = file.name.split('.').pop();
