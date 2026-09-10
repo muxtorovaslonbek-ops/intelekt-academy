@@ -2,7 +2,7 @@ import { Course, Quiz, User, NotificationSettings, SecuritySettings, Announcemen
 
 export const INITIAL_USERS: User[] = [
   {
-    id: 'admin-1',
+    id: '00000000-0000-0000-0000-000000000001',
     firstName: 'Aslonbek',
     lastName: 'Muxtorov',
     phoneNumber: '+998 90 123 45 67',

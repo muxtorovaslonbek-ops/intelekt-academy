@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (adminIdx !== -1) {
           parsed[adminIdx] = {
             ...parsed[adminIdx],
+            id: '00000000-0000-0000-0000-000000000001',
             firstName: 'Aslonbek',
             lastName: 'Muxtorov',
             email: parsed[adminIdx].email || 'admin@aifuture.uz',
@@ -94,6 +95,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
     const saved = localStorage.getItem('aifuture-current-user-id');
+    if (saved === 'admin-aslonbek' || saved === 'admin-1') {
+      return '00000000-0000-0000-0000-000000000001';
+    }
     return saved || null;
   });
 
@@ -564,7 +568,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const adminUser: User = {
-      id: 'admin-aslonbek',
+      id: '00000000-0000-0000-0000-000000000001',
       firstName: 'Aslonbek',
       lastName: 'Muxtorov',
       phoneNumber: '+998 90 123 45 67',
