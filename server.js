@@ -16,6 +16,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200
 const bunnyApiKey = process.env.BUNNY_API_KEY || '';
 const bunnyStorageZone = process.env.BUNNY_STORAGE_ZONE || '';
 const bunnyBaseUrl = (process.env.BUNNY_BASE_URL || 'https://storage.bunnycdn.com').replace(/\/$/, '');
+const bunnyCdnUrl = (process.env.BUNNY_CDN_URL || '').replace(/\/$/, '');
 const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || '';
 
 app.get('/api/health', (_req, res) => {
@@ -106,7 +107,9 @@ app.post('/api/upload-media', upload.single('file'), async (req, res) => {
       return res.status(500).json({ ok: false, error: text || 'Bunny.net upload failed' });
     }
 
-    const publicUrl = `${bunnyBaseUrl}/${bunnyStorageZone}/${encodeURIComponent(file.originalname)}`;
+    const publicUrl = bunnyCdnUrl
+      ? `${bunnyCdnUrl}/${encodeURIComponent(file.originalname)}`
+      : `${bunnyBaseUrl}/${bunnyStorageZone}/${encodeURIComponent(file.originalname)}`;
     return res.status(200).json({
       ok: true,
       id: `bunny-${Date.now()}`,

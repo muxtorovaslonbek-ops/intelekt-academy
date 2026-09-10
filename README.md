@@ -29,6 +29,7 @@ PORT=4000
 BUNNY_API_KEY=your-bunny-storage-api-key
 BUNNY_STORAGE_ZONE=your-storage-zone
 BUNNY_BASE_URL=https://storage.bunnycdn.com
+BUNNY_CDN_URL=https://your-pull-zone.b-cdn.net
 ```
 
 ## GitHub deployment

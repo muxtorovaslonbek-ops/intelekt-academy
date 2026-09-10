@@ -7,6 +7,7 @@ export const config = {
 const bunnyApiKey = process.env.BUNNY_API_KEY || '';
 const bunnyStorageZone = process.env.BUNNY_STORAGE_ZONE || '';
 const bunnyBaseUrl = (process.env.BUNNY_BASE_URL || 'https://storage.bunnycdn.com').replace(/\/$/, '');
+const bunnyCdnUrl = (process.env.BUNNY_CDN_URL || '').replace(/\/$/, '');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -38,7 +39,10 @@ export default async function handler(req, res) {
       return res.status(502).json({ ok: false, error: 'Bunny.net upload failed' });
     }
 
-    return res.status(200).json({ ok: true, id: `bunny-${Date.now()}`, url: uploadUrl, publicUrl: uploadUrl });
+    const publicUrl = bunnyCdnUrl
+      ? `${bunnyCdnUrl}/${encodeURIComponent(filename)}`
+      : uploadUrl;
+    return res.status(200).json({ ok: true, id: `bunny-${Date.now()}`, url: publicUrl, publicUrl });
   } catch (error) {
     console.error('Vercel Bunny upload error:', error);
     return res.status(500).json({ ok: false, error: 'Upload failed' });
