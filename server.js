@@ -1,0 +1,121 @@
+import express from 'express';
+import cors from 'cors';
+import multer from 'multer';
+
+const app = express();
+const port = Number(process.env.PORT || 4000);
+
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
+
+const bunnyApiKey = process.env.BUNNY_API_KEY || '';
+const bunnyStorageZone = process.env.BUNNY_STORAGE_ZONE || '';
+const bunnyBaseUrl = (process.env.BUNNY_BASE_URL || 'https://storage.bunnycdn.com').replace(/\/$/, '');
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, service: 'ai-darslar-api', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/courses', (_req, res) => {
+  res.json({
+    items: [
+      {
+        id: 'course-ai-secrets',
+        title: "Sun'iy Intellekt (AI) sirlari",
+        category: "Sun'iy Intellekt",
+        level: 'O\'rta',
+        duration: '40 soat',
+        instructor: 'Aslonbek Muxtorov',
+      },
+      {
+        id: 'course-web-development',
+        title: 'Web-saytlar yaratish',
+        category: 'Web Dasturlash',
+        level: 'Boshlang\'ich',
+        duration: '45 soat',
+        instructor: 'Aslonbek Muxtorov',
+      },
+    ],
+  });
+});
+
+app.get('/api/announcements', (_req, res) => {
+  res.json({
+    items: [
+      {
+        id: 'ann-1',
+        title: 'AI Future platformasi ishga tushdi',
+        message: 'Barcha xizmatlar API orqali ishlay boshladi.',
+        category: 'important',
+        author: 'Admin',
+        createdAt: new Date().toISOString(),
+      },
+    ],
+  });
+});
+
+app.post('/api/feedback', (req, res) => {
+  const { name, email, message } = req.body || {};
+
+  if (!name || !message) {
+    return res.status(400).json({ ok: false, error: 'name and message are required' });
+  }
+
+  return res.status(201).json({
+    ok: true,
+    id: `fb-${Date.now()}`,
+    saved: { name, email: email || '', message },
+  });
+});
+
+app.post('/api/upload-media', upload.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).json({ ok: false, error: 'file is required' });
+  }
+
+  if (!bunnyApiKey || !bunnyStorageZone) {
+    return res.status(200).json({
+      ok: true,
+      id: `local-${Date.now()}`,
+      url: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+      publicUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+      note: 'Bunny.net env not configured; using data URL fallback',
+    });
+  }
+
+  try {
+    const uploadUrl = `${bunnyBaseUrl}/${bunnyStorageZone}/${encodeURIComponent(file.originalname)}`;
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        AccessKey: bunnyApiKey,
+        'Content-Type': file.mimetype || 'application/octet-stream',
+      },
+      body: file.buffer,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return res.status(500).json({ ok: false, error: text || 'Bunny.net upload failed' });
+    }
+
+    const publicUrl = `${bunnyBaseUrl}/${bunnyStorageZone}/${encodeURIComponent(file.originalname)}`;
+    return res.status(200).json({
+      ok: true,
+      id: `bunny-${Date.now()}`,
+      url: publicUrl,
+      publicUrl,
+      storage: 'bunny',
+    });
+  } catch (error) {
+    console.error('Bunny upload error:', error);
+    return res.status(500).json({ ok: false, error: 'Upload failed' });
+  }
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`API running on http://localhost:${port}`);
+});

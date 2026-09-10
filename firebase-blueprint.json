@@ -1,0 +1,164 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and platform access status",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User unique identifier matching Firebase Auth UID"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "User's first name",
+          "maxLength": 100
+        },
+        "lastName": {
+          "type": "string",
+          "description": "User's last name",
+          "maxLength": 100
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Contact phone number",
+          "maxLength": 30
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address",
+          "maxLength": 150
+        },
+        "telegramHandle": {
+          "type": "string",
+          "description": "Telegram username",
+          "maxLength": 60
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "admin"],
+          "description": "Role of the user in the learning platform"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "Platform registration approval status"
+        },
+        "authProvider": {
+          "type": "string",
+          "description": "Authentication method used (e.g., google, email, telegram)"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "URL to profile avatar image",
+          "maxLength": 500
+        },
+        "joinedDate": {
+          "type": "string",
+          "description": "Date formatted string of when the user joined"
+        },
+        "bio": {
+          "type": "string",
+          "description": "Short bio or summary",
+          "maxLength": 1000
+        }
+      },
+      "required": ["id", "firstName", "lastName", "role", "status"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Learning course with lessons syllabus",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "level": { "type": "string", "enum": ["Boshlang'ich", "O'rta", "Yuqori"] },
+        "duration": { "type": "string", "maxLength": 50 },
+        "lessonsCount": { "type": "number" },
+        "studentsCount": { "type": "number" },
+        "rating": { "type": "number" },
+        "description": { "type": "string", "maxLength": 2000 },
+        "instructor": { "type": "string", "maxLength": 100 },
+        "thumbnail": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["active", "draft"] }
+      },
+      "required": ["id", "title", "category", "instructor"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Platform announcement created by admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 3000 },
+        "category": { "type": "string", "enum": ["important", "news", "system", "update"] },
+        "author": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string" },
+        "isPinned": { "type": "boolean" }
+      },
+      "required": ["id", "title", "message", "category", "author"]
+    },
+    "FeedbackMessage": {
+      "title": "FeedbackMessage",
+      "description": "User feedback, suggestions or questions submitted to admins",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userEmail": { "type": "string", "maxLength": 150 },
+        "userPhone": { "type": "string", "maxLength": 30 },
+        "userTelegram": { "type": "string", "maxLength": 60 },
+        "type": { "type": "string", "enum": ["suggestion", "request", "opinion", "comment", "complaint", "question"] },
+        "subject": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 3000 },
+        "status": { "type": "string", "enum": ["new", "reviewed", "resolved"] },
+        "adminReply": { "type": "string", "maxLength": 3000 },
+        "adminRepliedAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userName", "type", "subject", "message", "status"]
+    },
+    "TestResult": {
+      "title": "TestResult",
+      "description": "Records of completed quiz tests and scores",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "quizId": { "type": "string" },
+        "quizTitle": { "type": "string", "maxLength": 200 },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "percentage": { "type": "number" },
+        "passed": { "type": "boolean" },
+        "completedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "quizId", "score", "totalQuestions", "percentage", "passed"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and account authorizations"
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Platform curriculum and video course catalog"
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Administrative announcements and updates"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": { "$ref": "#/entities/FeedbackMessage" },
+      "description": "Feedback messages and responses"
+    },
+    "/test_results/{resultId}": {
+      "schema": { "$ref": "#/entities/TestResult" },
+      "description": "Interactive test submissions and certificate records"
+    }
+  }
+}
