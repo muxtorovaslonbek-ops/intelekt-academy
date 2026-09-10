@@ -36,8 +36,7 @@ export const DashboardView: React.FC<{ onRouteChange: (route: ActiveRoute) => vo
   // --------------------------------------------------------------------------
   const [platformStudySeconds, setPlatformStudySeconds] = useState<number>(() => {
     const saved = localStorage.getItem(`eduplatform_study_seconds_${userId}`);
-    // 18.5 hours baseline = 66,600 seconds as requested
-    return saved ? parseInt(saved, 10) : 66600;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   // Track active learning seconds while browsing
@@ -83,21 +82,21 @@ export const DashboardView: React.FC<{ onRouteChange: (route: ActiveRoute) => vo
     const dateKey = `eduplatform_last_active_${userId}`;
 
     const lastDate = localStorage.getItem(dateKey);
-    const storedStreak = parseInt(localStorage.getItem(streakKey) || '5', 10);
+    const storedStreak = parseInt(localStorage.getItem(streakKey) || '0', 10);
 
     if (!lastDate) {
       localStorage.setItem(dateKey, today);
-      localStorage.setItem(streakKey, '5');
-      return 5;
+      localStorage.setItem(streakKey, '1');
+      return 1;
     }
 
     if (lastDate === today) {
-      return storedStreak || 5;
+      return storedStreak || 1;
     }
 
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     if (lastDate === yesterday) {
-      const nextStreak = (storedStreak || 4) + 1;
+      const nextStreak = (storedStreak || 1) + 1;
       localStorage.setItem(streakKey, String(nextStreak));
       localStorage.setItem(dateKey, today);
       return nextStreak;
@@ -202,7 +201,7 @@ export const DashboardView: React.FC<{ onRouteChange: (route: ActiveRoute) => vo
             </span>
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
               <TrendingUp className="w-3 h-3" />
-              +2 yangi
+              {activeCourses.length} faol
             </span>
           </div>
           <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
