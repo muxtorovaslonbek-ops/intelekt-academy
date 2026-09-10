@@ -7,17 +7,6 @@ import {
   upsertSupabaseProfile,
   fetchSupabaseProfiles,
 } from '../lib/supabase';
-import {
-  auth,
-  signInWithGoogle,
-  signOutFirebase,
-  getFirebaseUserProfile,
-  upsertFirebaseUserProfile,
-  deleteFirebaseUserProfile,
-  subscribeToFirebaseUsers,
-  fetchFirebaseUsers,
-  onAuthStateChanged,
-} from '../lib/firebase';
 
 export interface ProfileData {
   first_name?: string;
@@ -151,100 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUsers();
   }, [refreshUsers]);
 
-  // Real-time synchronization with Firestore Users Collection
-  useEffect(() => {
-    if (isSupabaseConfigured) return;
-
-    // Initial fetch from Firestore
-    fetchFirebaseUsers()
-      .then((remoteUsers) => {
-        if (remoteUsers && remoteUsers.length > 0) {
-          setUsers((prev) => {
-            const admin = prev.find((u) => u.role === 'admin') || INITIAL_USERS[0];
-            const map = new Map<string, User>();
-            remoteUsers.forEach((u) => map.set(u.id, u));
-            if (!map.has(admin.id) && !Array.from(map.values()).some((u) => u.role === 'admin')) {
-              map.set(admin.id, admin);
-            }
-            return normalizeUsers(Array.from(map.values()));
-          });
-        }
-      })
-      .catch((err) => console.warn('Initial Firestore users fetch note:', err));
-
-    // Live real-time listener for user registrations and status approvals
-    const unsubscribeUsers = subscribeToFirebaseUsers((remoteUsers) => {
-      if (remoteUsers && remoteUsers.length > 0) {
-        setUsers((prev) => {
-          const admin = prev.find((u) => u.role === 'admin') || INITIAL_USERS[0];
-          const map = new Map<string, User>();
-          remoteUsers.forEach((u) => map.set(u.id, u));
-          if (!map.has(admin.id) && !Array.from(map.values()).some((u) => u.role === 'admin')) {
-            map.set(admin.id, admin);
-          }
-          return normalizeUsers(Array.from(map.values()));
-        });
-      }
-    });
-
-    return () => unsubscribeUsers();
-  }, []);
-
-  // Listen to Firebase Auth state changes
-  useEffect(() => {
-    if (isSupabaseConfigured) return;
-
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        try {
-          const remoteProfile = await getFirebaseUserProfile(fbUser.uid);
-          if (remoteProfile) {
-            setUsers((prev) => {
-              const existingIdx = prev.findIndex((u) => u.id === remoteProfile.id);
-              if (existingIdx !== -1) {
-                const copy = [...prev];
-                copy[existingIdx] = remoteProfile;
-                return copy;
-              }
-              return [remoteProfile, ...prev];
-            });
-            setCurrentUserId(remoteProfile.id);
-          } else {
-            // Create user profile in Firestore
-            const fullName = fbUser.displayName || 'Google Foydalanuvchisi';
-            const parts = fullName.trim().split(' ');
-            const fName = parts[0] || 'Google';
-            const lName = parts.slice(1).join(' ') || 'Foydalanuvchisi';
-            const isAdmin = fbUser.email?.toLowerCase() === 'muxtorovaslonbek@gmail.com';
-
-            const newUser: User = {
-              id: fbUser.uid,
-              firstName: fName,
-              lastName: lName,
-              phoneNumber: fbUser.phoneNumber || '',
-              email: fbUser.email || '',
-              role: isAdmin ? 'admin' : 'student',
-              status: isAdmin ? 'approved' : 'pending',
-              authProvider: 'google',
-              joinedDate: new Date().toISOString().split('T')[0],
-              avatarUrl:
-                fbUser.photoURL ||
-                'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-            };
-
-            await upsertFirebaseUserProfile(newUser);
-            setUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
-            setCurrentUserId(newUser.id);
-          }
-        } catch (err) {
-          console.warn('Firebase user sync note:', err);
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   // Listen to Supabase Auth state changes if active
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -352,53 +247,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithFirebaseGoogle = async (): Promise<boolean> => {
     try {
-      const res = await signInWithGoogle();
-      if (!res || !res.user) return false;
-      const fbUser = res.user;
-
-      const cleanEmail = fbUser.email?.toLowerCase() || '';
-      const fullName = fbUser.displayName || 'Google Foydalanuvchisi';
-      const parts = fullName.trim().split(' ');
-      const fName = parts[0] || 'Google';
-      const lName = parts.slice(1).join(' ') || 'Foydalanuvchisi';
-      const isAdmin = cleanEmail === 'muxtorovaslonbek@gmail.com';
-
-      const existingProfile = await getFirebaseUserProfile(fbUser.uid);
-      if (existingProfile) {
-        setUsers((prev) => {
-          const idx = prev.findIndex((u) => u.id === existingProfile.id);
-          if (idx !== -1) {
-            const cp = [...prev];
-            cp[idx] = existingProfile;
-            return cp;
-          }
-          return [existingProfile, ...prev];
-        });
-        setCurrentUserId(existingProfile.id);
-        return true;
-      }
-
-      const newUser: User = {
-        id: fbUser.uid,
-        firstName: fName,
-        lastName: lName,
-        phoneNumber: fbUser.phoneNumber || '',
-        email: cleanEmail,
-        role: isAdmin ? 'admin' : 'student',
-        status: isAdmin ? 'approved' : 'pending',
-        authProvider: 'google',
-        joinedDate: new Date().toISOString().split('T')[0],
-        avatarUrl:
-          fbUser.photoURL ||
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      };
-
-      await upsertFirebaseUserProfile(newUser);
-      setUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
-      setCurrentUserId(newUser.id);
-      return true;
+      if (!isSupabaseConfigured) return false;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      return !error;
     } catch (err) {
-      console.warn('Firebase Google Sign-in note:', err);
+      console.warn('Supabase Google Sign-in note:', err);
       return false;
     }
   };
@@ -446,7 +302,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUsers((prev) => [newUser, ...prev]);
       setCurrentUserId(newUser.id);
       upsertSupabaseProfile(newUser);
-      upsertFirebaseUserProfile(newUser).catch(() => {});
       return true;
     }
 
@@ -553,9 +408,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
     setCurrentUserId(newUser.id);
     upsertSupabaseProfile(newUser);
-    upsertFirebaseUserProfile(newUser).catch((e) => {
-      console.warn('Firestore user save note:', e);
-    });
     return true;
   };
 
@@ -613,7 +465,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsers((prev) => [adminUser, ...prev.filter((u) => u.id !== adminUser.id && u.role !== 'admin')]);
     setCurrentUserId(adminUser.id);
     upsertSupabaseProfile(adminUser).catch(() => {});
-    upsertFirebaseUserProfile(adminUser).catch(() => {});
     return { success: true };
   };
 
@@ -626,7 +477,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUsers((prev) => [newUser, ...prev]);
     upsertSupabaseProfile(newUser);
-    upsertFirebaseUserProfile(newUser).catch(() => {});
   };
 
   const deleteUser = (userId: string) => {
@@ -637,14 +487,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       supabase.from('profiles').delete().eq('id', userId).then();
     }
-    deleteFirebaseUserProfile(userId).catch(() => {});
   };
 
   const logout = () => {
     if (isSupabaseConfigured) {
       supabase.auth.signOut().catch(() => {});
     }
-    signOutFirebase().catch(() => {});
     setCurrentUserId(null);
   };
 
@@ -655,7 +503,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prev.map((u) => (u.id === currentUser.id ? updated : u))
     );
     upsertSupabaseProfile(updated);
-    upsertFirebaseUserProfile(updated).catch(() => {});
   };
 
   const updateAnyUser = (userId: string, updates: Partial<User>) => {
@@ -664,7 +511,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (u.id === userId) {
           const updated = { ...u, ...updates };
           upsertSupabaseProfile(updated);
-          upsertFirebaseUserProfile(updated).catch(() => {});
           return updated;
         }
         return u;
@@ -682,7 +528,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (u.id === userId) {
           const updated = { ...u, status: 'approved' as UserStatus };
           upsertSupabaseProfile(updated);
-          upsertFirebaseUserProfile(updated).catch(() => {});
           return updated;
         }
         return u;
@@ -700,7 +545,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (u.id === userId) {
           const updated = { ...u, status: 'rejected' as UserStatus };
           upsertSupabaseProfile(updated);
-          upsertFirebaseUserProfile(updated).catch(() => {});
           return updated;
         }
         return u;
@@ -718,7 +562,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (u.id === userId) {
           const updated = { ...u, status, ...(role ? { role } : {}) };
           upsertSupabaseProfile(updated);
-          upsertFirebaseUserProfile(updated).catch(() => {});
           return updated;
         }
         return u;
@@ -744,7 +587,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         users,
         isAuthenticated,
         isSupabaseActive: isSupabaseConfigured,
-        isFirebaseActive: true,
+        isFirebaseActive: false,
         login,
         loginWithCredentials,
         loginWithGoogle,

@@ -78,7 +78,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Direct real Google Firebase OAuth authentication
+  // Direct real Google Supabase OAuth authentication
   const handleRealGoogleAuth = async () => {
     setAuthError(null);
     setAuthSuccess(null);
@@ -1129,7 +1129,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
                         <path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.25C.45 8.24 0 10.06 0 12s.45 3.76 1.25 5.39l4.02-3.15z" />
                         <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.61l4.02 3.15c.95-2.85 3.6-4.96 6.73-4.96z" />
                       </svg>
-                      <span>Google hisobi orqali to'g'ridan-to'g'ri kirish (Firebase OAuth)</span>
+                      <span>Google hisobi orqali to'g'ridan-to'g'ri kirish (Supabase OAuth)</span>
                     </button>
 
                     <div>

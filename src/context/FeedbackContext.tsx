@@ -1,13 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { FeedbackMessage, FeedbackStatus } from '../types';
 import { playNotificationSound } from '../utils/audio';
-import {
-  saveFeedbackToFirestore,
-  updateFeedbackInFirestore,
-  deleteFeedbackFromFirestore,
-  subscribeToFirebaseFeedbacks,
-} from '../lib/firebase';
-import { isSupabaseConfigured, upsertSupabaseFeedback, updateSupabaseFeedback, deleteSupabaseFeedback, fetchSupabaseFeedback } from '../lib/supabase';
+import { upsertSupabaseFeedback, updateSupabaseFeedback, deleteSupabaseFeedback, fetchSupabaseFeedback } from '../lib/supabase';
 
 interface FeedbackContextType {
   feedbacks: FeedbackMessage[];
@@ -50,20 +44,10 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     return INITIAL_FEEDBACKS;
   });
 
-  // Subscribe to real Firestore feedbacks
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      fetchSupabaseFeedback().then((items) => {
-        if (items) setFeedbacks(items);
-      });
-      return;
-    }
-    const unsubscribe = subscribeToFirebaseFeedbacks((firestoreFeedbacks) => {
-      if (firestoreFeedbacks && firestoreFeedbacks.length > 0) {
-        setFeedbacks(firestoreFeedbacks);
-      }
+    fetchSupabaseFeedback().then((items) => {
+      if (items) setFeedbacks(items);
     });
-    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -123,10 +107,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     };
 
     setFeedbacks((prev) => [newFeedback, ...prev]);
-    saveFeedbackToFirestore(newFeedback).catch((e) => {
-      console.warn('Feedback Firestore save note:', e);
-    });
-    if (isSupabaseConfigured) upsertSupabaseFeedback(newFeedback).catch((e) => console.warn('Feedback Supabase save note:', e));
+    upsertSupabaseFeedback(newFeedback).catch((e) => console.warn('Feedback Supabase save note:', e));
 
     // Play pleasant success audio chime
     playNotificationSound('success');
@@ -136,10 +117,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     setFeedbacks((prev) =>
       prev.map((fb) => (fb.id === id ? { ...fb, status } : fb))
     );
-    updateFeedbackInFirestore(id, { status }).catch((e) => {
-      console.warn('Feedback status Firestore update note:', e);
-    });
-    if (isSupabaseConfigured) updateSupabaseFeedback(id, { status }).catch((e) => console.warn('Feedback Supabase update note:', e));
+    updateSupabaseFeedback(id, { status }).catch((e) => console.warn('Feedback Supabase update note:', e));
   };
 
   const replyToFeedback = (id: string, replyText: string) => {
@@ -161,28 +139,18 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
           : fb
       )
     );
-    updateFeedbackInFirestore(id, {
-      adminReply: replyText.trim(),
-      adminRepliedAt: replyDate,
-      status: 'resolved',
-    }).catch((e) => {
-      console.warn('Feedback reply Firestore update note:', e);
-    });
-    if (isSupabaseConfigured) updateSupabaseFeedback(id, { adminReply: replyText.trim(), adminRepliedAt: replyDate, status: 'resolved' }).catch((e) => console.warn('Feedback Supabase reply note:', e));
+    updateSupabaseFeedback(id, { adminReply: replyText.trim(), adminRepliedAt: replyDate, status: 'resolved' }).catch((e) => console.warn('Feedback Supabase reply note:', e));
     playNotificationSound('chime');
   };
 
   const deleteFeedback = (id: string) => {
     setFeedbacks((prev) => prev.filter((fb) => fb.id !== id));
-    deleteFeedbackFromFirestore(id).catch((e) => {
-      console.warn('Feedback delete Firestore note:', e);
-    });
-    if (isSupabaseConfigured) deleteSupabaseFeedback(id).catch((e) => console.warn('Feedback Supabase delete note:', e));
+    deleteSupabaseFeedback(id).catch((e) => console.warn('Feedback Supabase delete note:', e));
   };
 
   const clearAllFeedbacks = () => {
     feedbacks.forEach((fb) => {
-      deleteFeedbackFromFirestore(fb.id).catch(() => {});
+      deleteSupabaseFeedback(fb.id).catch(() => {});
     });
     setFeedbacks([]);
     localStorage.removeItem('eduplatform-feedbacks');

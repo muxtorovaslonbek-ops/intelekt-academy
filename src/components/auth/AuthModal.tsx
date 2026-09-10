@@ -56,7 +56,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Direct real Google Firebase OAuth login
+  // Direct real Google Supabase OAuth login
   const handleRealGoogleAuth = async () => {
     setError(null);
     setSuccessMsg(null);
@@ -693,7 +693,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                           <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.61l4.02 3.15c.95-2.85 3.6-4.96 6.73-4.96z" />
                         </svg>
                       </div>
-                      <span>Google hisobi orqali to'g'ridan-to'g'ri kirish (Firebase OAuth)</span>
+                      <span>Google hisobi orqali to'g'ridan-to'g'ri kirish (Supabase OAuth)</span>
                     </button>
 
                     <div>

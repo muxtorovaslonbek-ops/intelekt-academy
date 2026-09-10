@@ -2,13 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Announcement } from '../types';
 import { INITIAL_ANNOUNCEMENTS } from '../data/mockData';
 import { playNotificationSound } from '../utils/audio';
-import {
-  saveAnnouncementToFirestore,
-  updateAnnouncementInFirestore,
-  deleteAnnouncementFromFirestore,
-  subscribeToFirebaseAnnouncements,
-} from '../lib/firebase';
-import { isSupabaseConfigured, upsertSupabaseAnnouncement, updateSupabaseAnnouncement, deleteSupabaseAnnouncement, fetchSupabaseAnnouncements } from '../lib/supabase';
+import { upsertSupabaseAnnouncement, updateSupabaseAnnouncement, deleteSupabaseAnnouncement, fetchSupabaseAnnouncements } from '../lib/supabase';
 
 interface AnnouncementContextType {
   announcements: Announcement[];
@@ -47,23 +41,10 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
     return INITIAL_ANNOUNCEMENTS;
   });
 
-  // Subscribe to real Firestore announcements
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      fetchSupabaseAnnouncements().then((items) => {
-        if (items) setAnnouncements(items);
-      });
-      return;
-    }
-    const unsubscribe = subscribeToFirebaseAnnouncements((firestoreList) => {
-      if (firestoreList && firestoreList.length > 0) {
-        const filtered = firestoreList.filter(
-          (a) => !a.title.toLowerCase().includes('salom') && !a.message.toLowerCase().includes('salom')
-        );
-        setAnnouncements(filtered);
-      }
+    fetchSupabaseAnnouncements().then((items) => {
+      if (items) setAnnouncements(items);
     });
-    return () => unsubscribe();
   }, []);
 
   const [readIds, setReadIds] = useState<string[]>(() => {
@@ -128,10 +109,7 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
       isPinned,
     };
     setAnnouncements((prev) => [newAnn, ...prev]);
-    saveAnnouncementToFirestore(newAnn).catch((e) => {
-      console.warn('Announcement Firestore save note:', e);
-    });
-    if (isSupabaseConfigured) upsertSupabaseAnnouncement(newAnn).catch((e) => console.warn('Announcement Supabase save note:', e));
+    upsertSupabaseAnnouncement(newAnn).catch((e) => console.warn('Announcement Supabase save note:', e));
     // Play sound notification immediately when announcement is sent/arrives
     playNotificationSound();
   };
@@ -140,24 +118,18 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
     setAnnouncements((prev) =>
       prev.map((a) => (a.id === id ? { ...a, ...updates } : a))
     );
-    updateAnnouncementInFirestore(id, updates).catch((e) => {
-      console.warn('Announcement Firestore update note:', e);
-    });
-    if (isSupabaseConfigured) updateSupabaseAnnouncement(id, updates).catch((e) => console.warn('Announcement Supabase update note:', e));
+    updateSupabaseAnnouncement(id, updates).catch((e) => console.warn('Announcement Supabase update note:', e));
   };
 
   const deleteAnnouncement = (id: string) => {
     setAnnouncements((prev) => prev.filter((a) => a.id !== id));
     setReadIds((prev) => prev.filter((item) => item !== id));
-    deleteAnnouncementFromFirestore(id).catch((e) => {
-      console.warn('Announcement Firestore delete note:', e);
-    });
-    if (isSupabaseConfigured) deleteSupabaseAnnouncement(id).catch((e) => console.warn('Announcement Supabase delete note:', e));
+    deleteSupabaseAnnouncement(id).catch((e) => console.warn('Announcement Supabase delete note:', e));
   };
 
   const clearAllAnnouncements = () => {
     announcements.forEach((a) => {
-      deleteAnnouncementFromFirestore(a.id).catch(() => {});
+      deleteSupabaseAnnouncement(a.id).catch(() => {});
     });
     setAnnouncements([]);
     setReadIds([]);
@@ -170,7 +142,7 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
       const updated = prev.map((a) => (a.id === id ? { ...a, isPinned: !a.isPinned } : a));
       const target = updated.find((a) => a.id === id);
       if (target) {
-        updateAnnouncementInFirestore(id, { isPinned: target.isPinned }).catch(() => {});
+        updateSupabaseAnnouncement(id, { isPinned: target.isPinned }).catch(() => {});
       }
       return updated;
     });
