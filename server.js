@@ -13,6 +13,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200
 const bunnyApiKey = process.env.BUNNY_API_KEY || '';
 const bunnyStorageZone = process.env.BUNNY_STORAGE_ZONE || '';
 const bunnyBaseUrl = (process.env.BUNNY_BASE_URL || 'https://storage.bunnycdn.com').replace(/\/$/, '');
+const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || '';
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ai-darslar-api', timestamp: new Date().toISOString() });
@@ -113,6 +114,31 @@ app.post('/api/upload-media', upload.single('file'), async (req, res) => {
   } catch (error) {
     console.error('Bunny upload error:', error);
     return res.status(500).json({ ok: false, error: 'Upload failed' });
+  }
+});
+
+app.all('/api/telegram', async (req, res) => {
+  const action = String(req.query.action || '');
+  if (!['getMe', 'getUpdates', 'sendMessage'].includes(action)) {
+    return res.status(400).json({ ok: false, description: 'Invalid action' });
+  }
+  if (!telegramBotToken) {
+    return res.status(503).json({ ok: false, description: 'Telegram bot is not configured' });
+  }
+  try {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+      if (key !== 'action' && typeof value === 'string') query.set(key, value);
+    }
+    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/${action}${query.size ? `?${query}` : ''}`, {
+      method: action === 'sendMessage' ? 'POST' : 'GET',
+      headers: action === 'sendMessage' ? { 'Content-Type': 'application/json' } : undefined,
+      body: action === 'sendMessage' ? JSON.stringify(req.body || {}) : undefined,
+    });
+    return res.status(response.status).json(await response.json());
+  } catch (error) {
+    console.error('Telegram proxy error:', error);
+    return res.status(502).json({ ok: false, description: 'Telegram API unavailable' });
   }
 });
 

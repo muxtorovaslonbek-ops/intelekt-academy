@@ -1,9 +1,7 @@
 // Telegram Bot Service for EduPlatform Authentication (@edusatbot)
-// Bot Token provided: 8600138241:AAFyzyZO5pKKU-_wvshK63Ot5Sg-Gzdh_Z8
 
 export const TELEGRAM_BOT_USERNAME = 'edusatbot';
-export const TELEGRAM_BOT_TOKEN = '8600138241:AAFyzyZO5pKKU-_wvshK63Ot5Sg-Gzdh_Z8';
-const TELEGRAM_API_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+const TELEGRAM_API_BASE = '/api/telegram';
 
 export interface TelegramAuthSession {
   code: string;
@@ -76,7 +74,7 @@ export async function checkTelegramBotHealth(): Promise<{
   error?: string;
 }> {
   try {
-    const response = await fetch(`${TELEGRAM_API_BASE}/getMe`);
+    const response = await fetch(`${TELEGRAM_API_BASE}?action=getMe`);
     const data = await response.json();
     if (data.ok && data.result) {
       return {
@@ -173,7 +171,7 @@ export async function sendTelegramBotMessage(
   parseMode: 'HTML' | 'Markdown' = 'HTML'
 ): Promise<boolean> {
   try {
-    const response = await fetch(`${TELEGRAM_API_BASE}/sendMessage`, {
+    const response = await fetch(`${TELEGRAM_API_BASE}?action=sendMessage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -260,7 +258,7 @@ export function startTelegramBotPolling(
     if (!isRunning) return;
 
     try {
-      const url = `${TELEGRAM_API_BASE}/getUpdates?offset=${lastUpdateId ? lastUpdateId + 1 : 0}&timeout=5`;
+      const url = `${TELEGRAM_API_BASE}?action=getUpdates&offset=${lastUpdateId ? lastUpdateId + 1 : 0}&timeout=5`;
       const response = await fetch(url);
       const data = await response.json();
 
