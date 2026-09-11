@@ -152,6 +152,40 @@ export async function upsertSupabaseLesson(courseId: string, courseName: string,
   }
 }
 
+// Helper: Delete course from Supabase `courses` table
+export async function deleteSupabaseCourse(courseId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+
+  try {
+    const { error } = await supabase.from('courses').delete().eq('id', courseId);
+    if (error) {
+      console.warn('Course delete error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Course delete error:', err);
+    return false;
+  }
+}
+
+// Helper: Delete lesson from Supabase `lessons` table
+export async function deleteSupabaseLesson(lessonId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+
+  try {
+    const { error } = await supabase.from('lessons').delete().eq('id', lessonId);
+    if (error) {
+      console.warn('Lesson delete error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Lesson delete error:', err);
+    return false;
+  }
+}
+
 export async function upsertSupabaseFeedback(feedback: FeedbackMessage): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
 
@@ -421,4 +455,3 @@ export async function updateUserProfile(
 
   return { id: userId, ...updates };
 }
-
