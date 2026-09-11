@@ -85,9 +85,11 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
       fetchSupabaseCourses().then((supabaseCourses) => {
         if (supabaseCourses && supabaseCourses.length > 0) {
           setCourses((localCourses) => {
+            const baselineCourses = normalizeCourseIds(INITIAL_COURSES);
+            const availableLocalCourses = [...localCourses, ...baselineCourses];
             const remoteKeys = new Set<string>();
             const mergedRemote = supabaseCourses.map((remoteCourse) => {
-              const localCourse = localCourses.find(
+              const localCourse = availableLocalCourses.find(
                 (course) => course.id === remoteCourse.id || course.title === remoteCourse.title
               );
               remoteKeys.add(remoteCourse.id);
@@ -100,10 +102,11 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
               }
               return remoteCourse;
             });
-            const localOnlyCourses = localCourses.filter(
+            const localOnlyCourses = availableLocalCourses.filter(
               (course) =>
                 !remoteKeys.has(course.id) &&
-                !supabaseCourses.some((remoteCourse) => remoteCourse.title === course.title)
+                !supabaseCourses.some((remoteCourse) => remoteCourse.title === course.title) &&
+                !localCourses.some((existingCourse) => existingCourse.title === course.title)
             );
             return [...mergedRemote, ...localOnlyCourses];
           });
