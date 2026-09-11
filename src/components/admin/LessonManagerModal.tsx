@@ -59,6 +59,7 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Hidden file inputs
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -112,12 +113,14 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
     if (!file) return;
 
     setIsUploadingVideo(true);
+    setUploadError(null);
     try {
       const stored = await saveMediaFile(file);
       setVideoUrl(stored.url);
       setVideoName(file.name);
     } catch (err) {
       console.error('Failed to store video:', err);
+      setUploadError(err instanceof Error ? err.message : 'Video yuklanmadi.');
     } finally {
       setIsUploadingVideo(false);
       if (videoInputRef.current) videoInputRef.current.value = '';
@@ -130,12 +133,14 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
     if (!file) return;
 
     setIsUploadingPdf(true);
+    setUploadError(null);
     try {
       const stored = await saveMediaFile(file);
       setPdfUrl(stored.url);
       setPdfName(file.name);
     } catch (err) {
       console.error('Failed to store PDF:', err);
+      setUploadError(err instanceof Error ? err.message : 'PDF yuklanmadi.');
     } finally {
       setIsUploadingPdf(false);
       if (pdfInputRef.current) pdfInputRef.current.value = '';
@@ -148,12 +153,14 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
     if (!file) return;
 
     setIsUploadingImage(true);
+    setUploadError(null);
     try {
       const stored = await saveMediaFile(file);
       setImageUrl(stored.url);
       setImageName(file.name);
     } catch (err) {
       console.error('Failed to store image:', err);
+      setUploadError(err instanceof Error ? err.message : 'Rasm yuklanmadi.');
     } finally {
       setIsUploadingImage(false);
       if (imageInputRef.current) imageInputRef.current.value = '';
@@ -166,6 +173,7 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
     if (!file) return;
 
     setIsUploadingAttachment(true);
+    setUploadError(null);
     try {
       const stored = await saveMediaFile(file);
       const newAtt: LessonAttachment = {
@@ -179,6 +187,7 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
       setAttachments((prev) => [...prev, newAtt]);
     } catch (err) {
       console.error('Failed to store attachment:', err);
+      setUploadError(err instanceof Error ? err.message : 'Qo\'shimcha material yuklanmadi.');
     } finally {
       setIsUploadingAttachment(false);
       if (attachmentInputRef.current) attachmentInputRef.current.value = '';
@@ -188,6 +197,10 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
   const handleSubmitLesson = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    if (isUploadingVideo || isUploadingPdf || isUploadingImage || isUploadingAttachment) {
+      setUploadError('Fayl hali yuklanmoqda. Iltimos, yuklanish tugashini kuting.');
+      return;
+    }
 
     const lessonData: Omit<Lesson, 'id'> = {
       title: title.trim(),
@@ -360,6 +373,11 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
           ) : (
             /* CREATE / EDIT FORM */
             <form onSubmit={handleSubmitLesson} className="space-y-5">
+              {uploadError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium">
+                  {uploadError}
+                </div>
+              )}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-sm font-bold text-slate-900 dark:text-white">
                   {mode === 'create' ? "➕ Yangi Dars Yaratish" : "✏️ Darsni Tahrirlash"}

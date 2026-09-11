@@ -42,6 +42,23 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [lessonTab, setLessonTab] = useState<'info' | 'pdf' | 'image' | 'materials'>('info');
 
+  const downloadMedia = async (url: string, fileName: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Media faylga kirib bo\'lmadi.');
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const isPending = currentUser?.status === 'pending';
 
   // Synchronize with selectedCourseId from Dashboard or search
@@ -260,7 +277,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
                           </a>
                           <a
                             href={activeLesson.pdfUrl}
-                            download={activeLesson.pdfName || 'Darslik.pdf'}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              void downloadMedia(activeLesson.pdfUrl!, activeLesson.pdfName || 'Darslik.pdf');
+                            }}
                             className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/20"
                           >
                             <Download className="w-3.5 h-3.5" />
@@ -306,7 +326,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
                         </div>
                         <a
                           href={activeLesson.imageUrl}
-                          download={activeLesson.imageName || 'sxema.png'}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            void downloadMedia(activeLesson.imageUrl!, activeLesson.imageName || 'sxema.png');
+                          }}
                           className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-sm"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -358,7 +381,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
 
                           <a
                             href={att.url}
-                            download={att.name}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              void downloadMedia(att.url, att.name);
+                            }}
                             className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs shrink-0 transition-all shadow-sm"
                             title="Yuklab olish"
                           >
