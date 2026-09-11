@@ -927,6 +927,16 @@ export const AdminCmsView: React.FC = () => {
                               </>
                             )}
 
+                            {(u.status === 'approved' || u.status === 'rejected') && u.role !== 'admin' && (
+                              <button
+                                onClick={() => switchUserRoleOrStatus(u.id, 'pending')}
+                                title="Kutilmoqda holatiga qaytarish"
+                                className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 hover:bg-amber-600 hover:text-white transition-all cursor-pointer"
+                              >
+                                <Clock className="w-4 h-4" />
+                              </button>
+                            )}
+
                             <button
                               onClick={() => handleOpenEditUser(u)}
                               title="Tahrirlash"
