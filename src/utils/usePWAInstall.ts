@@ -5,8 +5,11 @@ export interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+// Keep the browser prompt even when it fires before the sidebar mounts.
+let pendingInstallPrompt: BeforeInstallPromptEvent | null = null;
+
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(pendingInstallPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
@@ -24,11 +27,13 @@ export function usePWAInstall() {
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      pendingInstallPrompt = e as BeforeInstallPromptEvent;
+      setDeferredPrompt(pendingInstallPrompt);
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      pendingInstallPrompt = null;
       setDeferredPrompt(null);
     };
 
@@ -49,9 +54,11 @@ export function usePWAInstall() {
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
       setIsInstalled(true);
+      pendingInstallPrompt = null;
       setDeferredPrompt(null);
       return true;
     }
+    setDeferredPrompt(null);
     return false;
   };
 
