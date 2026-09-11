@@ -105,16 +105,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header
       id="global-navbar"
-      className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors"
+      className="safe-top sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto safe-x px-2.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         {/* Left: Hamburger & Logo */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
           {onToggleSidebar && (
             <button
               id="hamburger-menu-btn"
               onClick={onToggleSidebar}
-              className="p-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="p-2 sm:p-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shrink-0"
               aria-label="Menyuni ochish"
             >
               <Menu className="w-5 h-5" />
@@ -125,15 +125,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div 
             id="navbar-glowing-logo"
             onClick={() => handleNav('dashboard')} 
-            className="group flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none"
+            className="group flex items-center gap-1.5 sm:gap-3 cursor-pointer select-none min-w-0"
           >
             {/* Logo Icon with Ambient Glow Aura */}
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex items-center justify-center shrink-0">
               {/* Soft Ambient Halo Aura */}
               <div className="absolute -inset-1 bg-gradient-to-tr from-indigo-500 via-violet-500 to-purple-500 rounded-2xl blur-md opacity-40 dark:opacity-55 group-hover:opacity-85 transition-opacity duration-300 group-hover:scale-105" />
 
               {/* Logo Icon Badge */}
-              <div className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-purple-600 text-white font-black text-sm sm:text-base shadow-md shadow-indigo-500/25 ring-1 ring-white/25 overflow-hidden">
+              <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-purple-600 text-white font-black text-sm sm:text-base shadow-md shadow-indigo-500/25 ring-1 ring-white/25 overflow-hidden">
                 {/* Subtle top gloss shine */}
                 <div className="absolute inset-x-0 top-0 h-1/2 bg-white/20 rounded-t-xl pointer-events-none" />
                 <span className="relative z-10 tracking-tighter">AI</span>
@@ -147,8 +147,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Logo Text */}
-            <div className="relative flex items-center">
-              <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200">
+            <div className="relative items-center hidden xs:flex min-w-0">
+              <span className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200 truncate">
                 AI Darslar
               </span>
             </div>
@@ -163,25 +163,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           />
         </div>
 
-        {/* Right Action Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* Right Action Buttons — horizontally scrollable safeguard so a button
+            can never be pushed off-screen and become invisible/unreachable */}
+        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0 overflow-x-auto no-scrollbar max-w-full">
           {/* Mobile Search Button */}
           <button
             id="mobile-search-toggle-btn"
             onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            className="md:hidden p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
+            className="md:hidden shrink-0 p-2 sm:p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
             title="Qidiruv"
             aria-label="Qidiruv"
           >
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Quick Sound Mute/Unmute Toggle */}
+          {/* Quick Sound Mute/Unmute Toggle (kichik ekranlarda bildirishnoma panelida ham mavjud) */}
           <button
             id="navbar-sound-toggle-btn"
             type="button"
             onClick={handleToggleSound}
-            className={`p-2.5 rounded-xl border transition-colors cursor-pointer flex items-center justify-center ${
+            className={`hidden xs:flex shrink-0 p-2 sm:p-2.5 rounded-xl border transition-colors cursor-pointer items-center justify-center ${
               soundOn
                 ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100/70'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-800'
@@ -193,7 +194,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* Notifications Dropdown */}
-          <div className="relative" ref={notifRef}>
+          <div className="relative shrink-0" ref={notifRef}>
             <button
               id="navbar-notifications-bell-btn"
               onClick={() => setIsNotifOpen(!isNotifOpen)}
@@ -214,7 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 z-50 space-y-3 animate-in fade-in-50 duration-150">
+              <div className="absolute right-0 mt-2 w-[88vw] max-w-80 sm:max-w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 z-50 space-y-3 animate-in fade-in-50 duration-150">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                   <div className="flex items-center gap-1.5">
                     <Bell className="w-4 h-4 text-indigo-600" />
@@ -339,20 +340,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
+            className="shrink-0 p-2 sm:p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
             title="Mavzuni o'zgartirish"
           >
-            {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-600" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />}
           </button>
 
           {/* User Auth / Profile */}
           {activeUser ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => handleNav('profile')}
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+                className="flex items-center gap-2 sm:gap-2.5 px-2 sm:px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm cursor-pointer shrink-0"
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-indigo-100 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-indigo-100 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm shrink-0">
                   {activeUser.avatarUrl || profile?.avatar_url ? (
                     <img
                       src={activeUser.avatarUrl || profile?.avatar_url}
@@ -376,7 +377,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : (
             <button
               onClick={onOpenAuthModal}
-              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.02] cursor-pointer"
+              className="shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.02] cursor-pointer"
             >
               <User className="w-4 h-4" />
               <span>Kirish</span>
