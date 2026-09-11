@@ -107,7 +107,13 @@ export const FloatingAiChat: React.FC = () => {
   return (
     <>
       {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div
+        className="fixed z-40"
+        style={{
+          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+          right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+        }}
+      >
         <button
           id="floating-ai-btn"
           onClick={() => setIsOpen(!isOpen)}
@@ -127,7 +133,11 @@ export const FloatingAiChat: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-2.5rem)] h-[520px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl z-40 flex flex-col overflow-hidden"
+            className="fixed w-96 max-w-[calc(100vw-2.5rem)] h-[min(520px,70vh)] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl z-40 flex flex-col overflow-hidden"
+            style={{
+              bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))',
+              right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+            }}
           >
             {/* Header */}
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 text-white flex items-center justify-between">
