@@ -294,7 +294,7 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
 
     return coursesData.map((c) => {
       const courseLessons: Lesson[] = (lessonsData || [])
-        .filter((l) => l.course_id === c.id || (!l.course_id && l.course_name === c.title))
+        .filter((l) => l.course_id === c.id || l.course_name === c.title)
         .map((l) => ({
           id: l.id,
           title: l.title,

@@ -92,10 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return;
     }
     onRouteChange(id);
-    // On small screens, close the drawer after selection
-    if (window.innerWidth < 1024) {
-      onClose();
-    }
+    onClose();
   };
 
   return (
@@ -312,7 +309,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   id="sidebar-contact-admin-btn"
                   onClick={() => {
                     if (onOpenContactModal) onOpenContactModal();
-                    if (window.innerWidth < 1024) onClose();
+                    onClose();
                   }}
                   className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group cursor-pointer text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/80 shadow-sm"
                 >
@@ -343,7 +340,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     id="sidebar-admin-cms-btn"
                     onClick={() => {
                       onRouteChange('admin-cms');
-                      if (window.innerWidth < 1024) onClose();
+                      onClose();
                     }}
                     className={`w-full mt-1.5 flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                       activeRoute === 'admin-cms'
@@ -368,7 +365,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   id="sidebar-intro-btn"
                   onClick={() => {
                     onRouteChange('intro');
-                    if (window.innerWidth < 1024) onClose();
+                    onClose();
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                     activeRoute === 'intro'
