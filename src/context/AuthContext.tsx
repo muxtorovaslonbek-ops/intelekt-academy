@@ -26,7 +26,7 @@ interface AuthContextType {
   login: (identifier: string) => boolean;
   loginWithCredentials: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (email?: string, fullName?: string, phone?: string) => Promise<boolean>;
-  loginWithFirebaseGoogle: () => Promise<boolean>;
+  loginWithFirebaseGoogle: (intent?: 'login' | 'register') => Promise<boolean>;
   loginWithGmail: (gmail: string, fullName?: string, phone?: string) => Promise<boolean>;
   loginWithTelegram: (telegramHandle: string, fullName?: string, phone?: string) => Promise<boolean>;
   loginAsAdmin: () => boolean;
@@ -143,10 +143,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         const sUser = session.user;
         const meta = sUser.user_metadata || {};
-        const matchedUser = users.find((u) => u.id === sUser.id || u.email === sUser.email);
+        const oauthIntent = localStorage.getItem('eduplatform-google-auth-intent') || 'login';
+        localStorage.removeItem('eduplatform-google-auth-intent');
+        const remoteProfiles = await fetchSupabaseProfiles();
+        const matchedUser = (remoteProfiles || users).find((u) => u.id === sUser.id || u.email === sUser.email);
 
         if (matchedUser) {
+          setUsers((prev) => normalizeUsers([matchedUser, ...prev.filter((u) => u.id !== matchedUser.id)]));
           setCurrentUserId(matchedUser.id);
+        } else if (oauthIntent === 'login') {
+          await supabase.auth.signOut();
+          window.dispatchEvent(new CustomEvent('google_auth_rejected'));
         } else {
           // Create profile from Supabase session
           const parts = (meta.full_name || meta.name || 'Foydalanuvchi').trim().split(' ');
@@ -240,9 +247,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
-  const loginWithFirebaseGoogle = async (): Promise<boolean> => {
+  const loginWithFirebaseGoogle = async (intent: 'login' | 'register' = 'login'): Promise<boolean> => {
     try {
       if (!isSupabaseConfigured) return false;
+      localStorage.setItem('eduplatform-google-auth-intent', intent);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin },
@@ -257,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async (email?: string, fullName?: string, phone?: string): Promise<boolean> => {
     // If no email provided, direct to Firebase Google popup
     if (!email) {
-      return loginWithFirebaseGoogle();
+      return loginWithFirebaseGoogle('register');
     }
 
     if (isSupabaseConfigured) {

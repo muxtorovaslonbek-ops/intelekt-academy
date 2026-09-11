@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { TelegramBotAuthWidget } from './TelegramBotAuthWidget';
 import { TelegramAuthSession } from '../../lib/telegramBot';
@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Clock,
   Sparkles,
-  Mail,
   KeyRound,
   Eye,
   EyeOff,
@@ -26,9 +25,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const {
     register,
     login,
-    loginWithGoogle,
     loginWithFirebaseGoogle,
-    loginWithGmail,
     loginWithTelegram,
     loginAsAdminWithCredentials,
     isSupabaseActive,
@@ -36,12 +33,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
 
   // Mode: 'register' | 'login' | 'admin'
   const [authMode, setAuthMode] = useState<'register' | 'login' | 'admin'>('register');
-  const [authMethod, setAuthMethod] = useState<'google' | 'telegram' | 'gmail'>('google');
+  const [authMethod, setAuthMethod] = useState<'google' | 'telegram'>('google');
 
   // Form states: First Name, Last Name, Email/Gmail/Google, Telegram, Phone
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [emailInput, setEmailInput] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('+998 ');
   const [telegramHandle, setTelegramHandle] = useState('@');
   const [password, setPassword] = useState('');
@@ -56,13 +52,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const handleRejectedGoogleAuth = () => {
+      setIsSubmitting(false);
+      setSuccessMsg(null);
+      setError("Bu Google hisob ro'yxatdan o'tmagan. Avval ro'yxatdan o'ting.");
+    };
+    window.addEventListener('google_auth_rejected', handleRejectedGoogleAuth);
+    return () => window.removeEventListener('google_auth_rejected', handleRejectedGoogleAuth);
+  }, []);
+
   // Direct real Google Supabase OAuth login
   const handleRealGoogleAuth = async () => {
     setError(null);
     setSuccessMsg(null);
     setIsSubmitting(true);
     try {
-      const success = await loginWithFirebaseGoogle();
+      const success = await loginWithFirebaseGoogle(authMode === 'register' ? 'register' : 'login');
       if (success) {
         setSuccessMsg("Google hisobingiz orqali muvaffaqiyatli kirdingiz!");
         setTimeout(() => {
@@ -144,7 +150,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         return;
       }
 
-      // 2. REGISTRATION (Google, Telegram, Gmail)
+      // 2. REGISTRATION (Google OAuth or Telegram)
       if (authMode === 'register') {
         if (!firstName.trim()) {
           setError('Iltimos, ismingizni kiriting (Ism majburiy).');
@@ -153,44 +159,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         }
         if (!lastName.trim()) {
           setError('Iltimos, familiyangizni kiriting (Familiya majburiy).');
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (authMethod === 'google') {
-          if (!emailInput.trim() || !emailInput.includes('@')) {
-            setError("Iltimos, to'g'ri Google elektron pochtangizni kiriting.");
-            setIsSubmitting(false);
-            return;
-          }
-          await loginWithGoogle(
-            emailInput.trim(),
-            `${firstName.trim()} ${lastName.trim()}`,
-            phoneNumber.trim() || undefined
-          );
-          setSuccessMsg("Google orqali muvaffaqiyatli ro'yxatdan o'tdingiz! Arizangiz adminga yuborildi.");
-          setTimeout(() => {
-            if (onSuccess) onSuccess();
-          }, 400);
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (authMethod === 'gmail') {
-          if (!emailInput.trim() || !emailInput.includes('@')) {
-            setError("Iltimos, to'g'ri Gmail manzilingizni kiriting.");
-            setIsSubmitting(false);
-            return;
-          }
-          await loginWithGmail(
-            emailInput.trim(),
-            `${firstName.trim()} ${lastName.trim()}`,
-            phoneNumber.trim() || undefined
-          );
-          setSuccessMsg("Gmail orqali muvaffaqiyatli ro'yxatdan o'tdingiz! Arizangiz adminga yuborildi.");
-          setTimeout(() => {
-            if (onSuccess) onSuccess();
-          }, 400);
           setIsSubmitting(false);
           return;
         }
@@ -215,46 +183,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         }
       }
 
-      // 3. LOGIN (By Google, Telegram, Gmail)
+      // 3. LOGIN (Google OAuth or Telegram)
       if (authMode === 'login') {
-        if (authMethod === 'google') {
-          if (!emailInput.trim() || !emailInput.includes('@')) {
-            setError('Google hisob pochtasini kiriting.');
-            setIsSubmitting(false);
-            return;
-          }
-          const success = await loginWithGoogle(emailInput.trim());
-          if (success) {
-            setSuccessMsg('Google orqali muvaffaqiyatli kirdingiz!');
-            setTimeout(() => {
-              if (onSuccess) onSuccess();
-            }, 400);
-          } else {
-            setError("Bunday Google hisobli foydalanuvchi topilmadi. Avval ro'yxatdan o'ting.");
-          }
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (authMethod === 'gmail') {
-          if (!emailInput.trim() || !emailInput.includes('@')) {
-            setError('Gmail pochtangizni kiriting.');
-            setIsSubmitting(false);
-            return;
-          }
-          const success = await loginWithGmail(emailInput.trim());
-          if (success) {
-            setSuccessMsg('Gmail orqali muvaffaqiyatli kirdingiz!');
-            setTimeout(() => {
-              if (onSuccess) onSuccess();
-            }, 400);
-          } else {
-            setError("Bunday Gmail hisobli foydalanuvchi topilmadi. Avval ro'yxatdan o'ting.");
-          }
-          setIsSubmitting(false);
-          return;
-        }
-
         if (authMethod === 'telegram') {
           if (!telegramHandle.trim() || telegramHandle.trim() === '@') {
             setError('Telegram @username kiriting.');
@@ -379,14 +309,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
             </div>
           )}
 
-          {/* Method Selection (For Register and Login - Google, Telegram, Gmail) */}
+          {/* Method Selection (For Register and Login - Google OAuth or Telegram) */}
           {(authMode === 'register' || authMode === 'login') && (
             <div className="mb-5 space-y-2">
               <div className="text-center text-xs font-medium text-slate-600 dark:text-slate-400">
                 {authMode === 'register' ? "Ro'yxatdan o'tish usulini tanlang:" : "Kirish usulini tanlang:"}
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Google */}
                 <button
                   type="button"
@@ -430,22 +360,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                   <span>Telegram</span>
                 </button>
 
-                {/* Gmail */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMethod('gmail');
-                    setError(null);
-                  }}
-                  className={`py-2 px-1.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    authMethod === 'gmail'
-                      ? 'bg-rose-50 dark:bg-slate-800 text-rose-600 dark:text-rose-400 border-rose-500 ring-2 ring-rose-500/20'
-                      : 'bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                  }`}
-                >
-                  <Mail className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                  <span>Gmail</span>
-                </button>
               </div>
             </div>
           )}
@@ -514,7 +428,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               </>
             )}
 
-            {/* 2. REGISTRATION FORM (Google, Telegram, Gmail) */}
+            {/* 2. REGISTRATION FORM (Google OAuth or Telegram) */}
             {authMode === 'register' && (
               <>
                 <div className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 text-xs text-cyan-800 dark:text-cyan-200 flex items-start gap-2">
@@ -581,48 +495,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                       <span>Google hisobingiz orqali real ro'yxatdan o'tish</span>
                     </button>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Yoki Google Pochta Manzili <span className="text-indigo-600 dark:text-cyan-400">*</span>
-                      </label>
-                      <div className="relative">
-                        <div className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.87c2.26-2.09 3.675-5.17 3.675-9.15z" />
-                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.05c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.25v3.15C3.26 21.36 7.34 24 12 24z" />
-                            <path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.25C.45 8.24 0 10.06 0 12s.45 3.76 1.25 5.39l4.02-3.15z" />
-                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.61l4.02 3.15c.95-2.85 3.6-4.96 6.73-4.96z" />
-                          </svg>
-                        </div>
-                        <input
-                          type="email"
-                          required
-                          value={emailInput}
-                          onChange={(e) => setEmailInput(e.target.value)}
-                          placeholder="pochta@gmail.com"
-                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {authMethod === 'gmail' && (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Gmail Manzilingiz <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-rose-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        required
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        placeholder="ismingiz@gmail.com"
-                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                      />
-                    </div>
                   </div>
                 )}
 
@@ -663,9 +535,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                       className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-500/20 transition flex items-center justify-center gap-2 mt-2 cursor-pointer"
                     >
                       <span>
-                        {authMethod === 'google'
-                          ? "Google bilan Ro'yxatdan O'tish"
-                          : "Gmail bilan Ro'yxatdan O'tish"}
+                        Google hisob orqali ro'yxatdan o'tish
                       </span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
@@ -696,48 +566,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                       <span>Google hisobi orqali to'g'ridan-to'g'ri kirish (Supabase OAuth)</span>
                     </button>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Yoki Google Elektron Pochtangiz
-                      </label>
-                      <div className="relative">
-                        <div className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.87c2.26-2.09 3.675-5.17 3.675-9.15z" />
-                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.05c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.25v3.15C3.26 21.36 7.34 24 12 24z" />
-                            <path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.25C.45 8.24 0 10.06 0 12s.45 3.76 1.25 5.39l4.02-3.15z" />
-                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.61l4.02 3.15c.95-2.85 3.6-4.96 6.73-4.96z" />
-                          </svg>
-                        </div>
-                        <input
-                          type="email"
-                          required
-                          value={emailInput}
-                          onChange={(e) => setEmailInput(e.target.value)}
-                          placeholder="pochta@gmail.com"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {authMethod === 'gmail' && (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Gmail Elektron Pochtangiz
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-rose-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        required
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        placeholder="ismingiz@gmail.com"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                      />
-                    </div>
                   </div>
                 )}
 
