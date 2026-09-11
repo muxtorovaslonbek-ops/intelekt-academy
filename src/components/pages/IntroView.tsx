@@ -47,9 +47,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
     isAuthenticated,
     register,
     login,
-    loginWithGoogle,
     loginWithFirebaseGoogle,
-    loginWithGmail,
     loginWithTelegram,
     loginAsAdminWithCredentials,
   } = useAuth();
@@ -57,8 +55,8 @@ export const IntroView: React.FC<IntroViewProps> = ({
 
   // Auth Section Tab: 'register' | 'login' | 'admin'
   const [authMode, setAuthMode] = useState<'register' | 'login' | 'admin'>('register');
-  // Auth Method: 'google' | 'telegram' | 'gmail'
-  const [authMethod, setAuthMethod] = useState<'google' | 'telegram' | 'gmail'>('google');
+  // Auth Method: direct Google OAuth or Telegram
+  const [authMethod, setAuthMethod] = useState<'google' | 'telegram'>('google');
 
   // Form states
   const [firstName, setFirstName] = useState('');
@@ -78,13 +76,23 @@ export const IntroView: React.FC<IntroViewProps> = ({
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const handleRejectedGoogleAuth = () => {
+      setIsSubmitting(false);
+      setAuthSuccess(null);
+      setAuthError("Bu Google hisob ro'yxatdan o'tmagan. Avval ro'yxatdan o'ting.");
+    };
+    window.addEventListener('google_auth_rejected', handleRejectedGoogleAuth);
+    return () => window.removeEventListener('google_auth_rejected', handleRejectedGoogleAuth);
+  }, []);
+
   // Direct real Google Supabase OAuth authentication
   const handleRealGoogleAuth = async () => {
     setAuthError(null);
     setAuthSuccess(null);
     setIsSubmitting(true);
     try {
-      const success = await loginWithFirebaseGoogle();
+      const success = await loginWithFirebaseGoogle(authMode === 'register' ? 'register' : 'login');
       if (success) {
         setAuthSuccess("Google hisobingiz orqali muvaffaqiyatli kirdingiz!");
         setTimeout(() => {
@@ -243,7 +251,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
     }
   };
 
-  // RO'YXATDAN O'TISH (Google, Telegram, Gmail)
+  // RO'YXATDAN O'TISH (Google OAuth or Telegram)
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -265,37 +273,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
       const phone = phoneNumber.trim().length > 5 ? phoneNumber.trim() : undefined;
 
-      // 1. Google orqali ro'yxatdan o'tish
-      if (authMethod === 'google') {
-        if (!emailInput.trim() || !emailInput.includes('@')) {
-          setAuthError('Google hisobingiz elektron pochtasini kiriting.');
-          setIsSubmitting(false);
-          return;
-        }
-        await loginWithGoogle(emailInput.trim(), fullName, phone);
-        setAuthSuccess("Google hisobi orqali ro'yxatdan o'tdingiz! Arizangiz adminga yuborildi.");
-        setTimeout(() => {
-          if (onSuccessAuth) onSuccessAuth();
-        }, 400);
-        return;
-      }
-
-      // 2. Gmail orqali ro'yxatdan o'tish
-      if (authMethod === 'gmail') {
-        if (!emailInput.trim() || !emailInput.includes('@')) {
-          setAuthError('Gmail elektron pochta manzilingizni kiriting.');
-          setIsSubmitting(false);
-          return;
-        }
-        await loginWithGmail(emailInput.trim(), fullName, phone);
-        setAuthSuccess("Gmail hisobi orqali ro'yxatdan o'tdingiz! Arizangiz adminga yuborildi.");
-        setTimeout(() => {
-          if (onSuccessAuth) onSuccessAuth();
-        }, 400);
-        return;
-      }
-
-      // 3. Telegram orqali ro'yxatdan o'tish
+      // Telegram orqali ro'yxatdan o'tish
       if (authMethod === 'telegram') {
         if (!telegramHandle.trim() || telegramHandle.trim() === '@' || telegramHandle.trim().length < 2) {
           setAuthError('Telegram @username kiriting (Masalan: @username).');
@@ -317,7 +295,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
     }
   };
 
-  // KIRISH (Google, Telegram, Gmail)
+  // KIRISH (Google OAuth or Telegram)
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -325,42 +303,6 @@ export const IntroView: React.FC<IntroViewProps> = ({
     setIsSubmitting(true);
 
     try {
-      if (authMethod === 'google') {
-        if (!emailInput.trim() || !emailInput.includes('@')) {
-          setAuthError('Google elektron pochta manzilingizni kiriting.');
-          setIsSubmitting(false);
-          return;
-        }
-        const success = await loginWithGoogle(emailInput.trim());
-        if (success) {
-          setAuthSuccess('Google hisobi orqali tizimga kirdingiz!');
-          setTimeout(() => {
-            if (onSuccessAuth) onSuccessAuth();
-          }, 400);
-        } else {
-          setAuthError("Bunday Google hisobli foydalanuvchi topilmadi. Avval ro'yxatdan o'ting.");
-        }
-        return;
-      }
-
-      if (authMethod === 'gmail') {
-        if (!emailInput.trim() || !emailInput.includes('@')) {
-          setAuthError('Gmail elektron pochta manzilingizni kiriting.');
-          setIsSubmitting(false);
-          return;
-        }
-        const success = await loginWithGmail(emailInput.trim());
-        if (success) {
-          setAuthSuccess('Gmail hisobi orqali tizimga kirdingiz!');
-          setTimeout(() => {
-            if (onSuccessAuth) onSuccessAuth();
-          }, 400);
-        } else {
-          setAuthError("Bunday Gmail hisobli foydalanuvchi topilmadi. Avval ro'yxatdan o'ting.");
-        }
-        return;
-      }
-
       if (authMethod === 'telegram') {
         if (!telegramHandle.trim() || telegramHandle.trim() === '@') {
           setAuthError('Telegram @username kiriting.');
@@ -851,7 +793,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
           {/* Form Container */}
           <div className="bg-white dark:bg-slate-950 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg transition-colors">
             
-            {/* METHOD SELECTOR: GOOGLE, TELEGRAM, GMAIL */}
+            {/* METHOD SELECTOR: GOOGLE ACCOUNT OR TELEGRAM */}
             {(authMode === 'register' || authMode === 'login') && (
               <div className="mb-6 space-y-3">
                 <div className="text-center text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -860,7 +802,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
                     : "Qaysi usul orqali kirmoqchisiz?"}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5 max-w-md mx-auto">
+                <div className="grid grid-cols-2 gap-2.5 max-w-md mx-auto">
                   {/* Google Button */}
                   <button
                     type="button"
@@ -914,22 +856,6 @@ export const IntroView: React.FC<IntroViewProps> = ({
                     <span>Telegram</span>
                   </button>
 
-                  {/* Gmail Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMethod('gmail');
-                      setAuthError(null);
-                    }}
-                    className={`py-2.5 px-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      authMethod === 'gmail'
-                        ? 'bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-600 dark:text-rose-300 ring-2 ring-rose-500/20 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                    }`}
-                  >
-                    <Mail className="w-4 h-4 text-rose-500 shrink-0" />
-                    <span>Gmail</span>
-                  </button>
                 </div>
               </div>
             )}
@@ -999,7 +925,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
                       <span>Google hisobingiz orqali real ro'yxatdan o'tish</span>
                     </button>
 
-                    <div>
+                    <div style={{ display: 'none' }}>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                         Yoki Google Elektron Pochta Manzili <span className="text-rose-500">*</span>
                       </label>
@@ -1104,7 +1030,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
                           ? "Yuklanmoqda..."
                           : authMethod === 'google'
                           ? "Google bilan Ro'yxatdan O'tish"
-                          : "Gmail bilan Ro'yxatdan O'tish"}
+                          : "Telegram orqali Ro'yxatdan O'tish"}
                       </span>
                     </NeonButton>
                   </>
@@ -1132,7 +1058,7 @@ export const IntroView: React.FC<IntroViewProps> = ({
                       <span>Google hisobi orqali to'g'ridan-to'g'ri kirish (Supabase OAuth)</span>
                     </button>
 
-                    <div>
+                    <div style={{ display: 'none' }}>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                         Yoki Google Elektron Pochta Manzili <span className="text-indigo-600 dark:text-indigo-400">*</span>
                       </label>
