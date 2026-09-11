@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, UserRole, UserStatus } from '../types';
 import { INITIAL_USERS } from '../data/mockData';
 import {
@@ -110,22 +110,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return saved || null;
   });
 
+  // Ids ilgari serverdan (Supabase) muvaffaqiyatli olib kelingan foydalanuvchilar.
+  // Bu bizga "hali serverga sinxronlanmagan yangi foydalanuvchi" bilan
+  // "admin tomonidan o'chirib yuborilgan foydalanuvchi"ni farqlashga yordam beradi:
+  // - avval bu ro'yxatda bo'lmagan (hali sync bo'lmagan) local foydalanuvchi -> saqlanadi
+  // - avval bu ro'yxatda bo'lgan, lekin endi serverda yo'q foydalanuvchi -> o'chirilgan deb hisoblanadi va olib tashlanadi
+  const knownRemoteIdsRef = useRef<Set<string>>(new Set());
+
   // Sync users with Supabase on mount if configured
   const refreshUsers = useCallback(async () => {
     if (isSupabaseConfigured) {
       try {
         const remoteProfiles = await fetchSupabaseProfiles();
         if (remoteProfiles && remoteProfiles.length > 0) {
+          const remoteIds = new Set(remoteProfiles.map((u) => u.id));
+
           setUsers((prev) => {
             const admin = prev.find((u) => u.role === 'admin') || INITIAL_USERS[0];
-            const remoteIds = new Set(remoteProfiles.map((u) => u.id));
-            const localOnlyUsers = prev.filter((u) => !remoteIds.has(u.id) && !u.id.startsWith('demo-'));
+            const localOnlyUsers = prev.filter((u) => {
+              if (remoteIds.has(u.id)) return false; // remote versiyasi ustunlik qiladi
+              if (u.id.startsWith('demo-')) return false;
+              // Agar bu foydalanuvchi ilgari serverda ko'rilgan bo'lsa-yu, endi
+              // remote ro'yxatda yo'q bo'lsa — demak admin uni o'chirib yuborgan.
+              // Uni local holatda ham olib tashlaymiz.
+              if (knownRemoteIdsRef.current.has(u.id)) return false;
+              return true;
+            });
             const combined = [...remoteProfiles, ...localOnlyUsers];
             if (!combined.some((u) => u.role === 'admin')) {
               combined.unshift(admin);
             }
             return normalizeUsers(combined);
           });
+
+          // Joriy foydalanuvchi endi serverda mavjud emasligini (o'chirilgan)
+          // aniqlab, uni avtomatik tizimdan chiqaramiz.
+          setCurrentUserId((prevId) => {
+            if (
+              prevId &&
+              knownRemoteIdsRef.current.has(prevId) &&
+              !remoteIds.has(prevId) &&
+              prevId !== CANONICAL_ADMIN_ID
+            ) {
+              if (isSupabaseConfigured) {
+                supabase.auth.signOut().catch(() => {});
+              }
+              return null;
+            }
+            return prevId;
+          });
+
+          knownRemoteIdsRef.current = remoteIds;
         }
       } catch (err) {
         console.warn('Supabase fetch error:', err);
@@ -135,6 +170,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshUsers();
+
+    // PWA rejimida ilova uzoq vaqt ochiq turishi mumkin, shu sabab admin
+    // qilgan o'zgarishlar (tasdiqlash/rad etish/kutilmoqdaga qaytarish/o'chirish)
+    // darhol aks etishi uchun davriy ravishda va ilova qayta fokusga
+    // qaytganda serverdan yangilanishlarni tekshiramiz.
+    const intervalId = window.setInterval(() => {
+      refreshUsers();
+    }, 20000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUsers();
+      }
+    };
+    const handleOnline = () => {
+      refreshUsers();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+      window.removeEventListener('online', handleOnline);
+    };
   }, [refreshUsers]);
 
   // Listen to Supabase Auth state changes if active
