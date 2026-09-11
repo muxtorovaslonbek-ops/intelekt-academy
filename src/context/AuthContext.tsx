@@ -118,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (remoteProfiles && remoteProfiles.length > 0) {
           setUsers((prev) => {
             const admin = prev.find((u) => u.role === 'admin') || INITIAL_USERS[0];
-            const combined = [...remoteProfiles];
+            const remoteIds = new Set(remoteProfiles.map((u) => u.id));
+            const localOnlyUsers = prev.filter((u) => !remoteIds.has(u.id) && !u.id.startsWith('demo-'));
+            const combined = [...remoteProfiles, ...localOnlyUsers];
             if (!combined.some((u) => u.role === 'admin')) {
               combined.unshift(admin);
             }

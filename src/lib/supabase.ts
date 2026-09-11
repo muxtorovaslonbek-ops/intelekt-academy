@@ -294,7 +294,7 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
 
     return coursesData.map((c) => {
       const courseLessons: Lesson[] = (lessonsData || [])
-        .filter((l) => l.course_id === c.id)
+        .filter((l) => l.course_id === c.id || (!l.course_id && l.course_name === c.title))
         .map((l) => ({
           id: l.id,
           title: l.title,
@@ -326,18 +326,7 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
         description: c.description || '',
         thumbnail: c.thumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
         status: c.status || 'active',
-        lessons: courseLessons.length > 0 ? courseLessons : [
-          {
-            id: `l-${c.id}-1`,
-            title: '1-Dars: Kirish va Asosiy tushunchalar',
-            duration: '20 daqiqa',
-            isCompleted: false,
-            bunnyVideoId: 'b-vid-intro',
-            libraryId: '384729',
-            description: `${c.title} kursi bo'yicha kirish darsi.`,
-            courseName: c.title,
-          }
-        ],
+        lessons: courseLessons,
       };
     });
   } catch (err) {

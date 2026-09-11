@@ -84,7 +84,29 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       fetchSupabaseCourses().then((supabaseCourses) => {
         if (supabaseCourses && supabaseCourses.length > 0) {
-          setCourses(supabaseCourses);
+          setCourses((localCourses) => {
+            const remoteKeys = new Set<string>();
+            const mergedRemote = supabaseCourses.map((remoteCourse) => {
+              const localCourse = localCourses.find(
+                (course) => course.id === remoteCourse.id || course.title === remoteCourse.title
+              );
+              remoteKeys.add(remoteCourse.id);
+              if (localCourse && remoteCourse.lessons.length === 0 && localCourse.lessons.length > 0) {
+                return {
+                  ...remoteCourse,
+                  lessons: localCourse.lessons,
+                  lessonsCount: localCourse.lessons.length,
+                };
+              }
+              return remoteCourse;
+            });
+            const localOnlyCourses = localCourses.filter(
+              (course) =>
+                !remoteKeys.has(course.id) &&
+                !supabaseCourses.some((remoteCourse) => remoteCourse.title === course.title)
+            );
+            return [...mergedRemote, ...localOnlyCourses];
+          });
           return;
         }
         courses.forEach((course) => {
