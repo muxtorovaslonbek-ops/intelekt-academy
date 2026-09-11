@@ -2,6 +2,51 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Extra-small breakpoint (juda tor telefon ekranlari uchun, masalan iPhone SE) */
+@theme {
+  --breakpoint-xs: 400px;
+}
+
+/* ============================================================
+   PWA Safe-Area (notch / status bar / gesture bar) support
+   Bu qism telefonlarda (ayniqsa PWA/standalone rejimda) tugmalar
+   status-bar yoki pastki gesture-bar ostida qolib ko'rinmay
+   qolishining oldini oladi.
+   ============================================================ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+.safe-top {
+  padding-top: var(--safe-top);
+}
+.safe-bottom {
+  padding-bottom: var(--safe-bottom);
+}
+.safe-left {
+  padding-left: var(--safe-left);
+}
+.safe-right {
+  padding-right: var(--safe-right);
+}
+.safe-x {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Hide scrollbar but keep the row scrollable so buttons never get
+   clipped/invisible on narrow screens */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
