@@ -117,10 +117,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             animate={{ x: 0 }}
             exit={{ x: -320 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="fixed top-0 left-0 bottom-0 w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex flex-col shadow-2xl overflow-hidden"
+            className="fixed top-0 left-0 bottom-0 w-[85vw] max-w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex flex-col shadow-2xl overflow-hidden safe-left"
           >
             {/* Header / Brand */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="safe-top p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div 
                 onClick={() => { onRouteChange('dashboard'); onClose(); }}
                 className="group flex items-center gap-3 cursor-pointer select-none"
@@ -386,7 +386,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Footer user badge */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40">
+            <div className="safe-bottom p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 shrink-0">
               <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span>Foydalanuvchi:</span>
                 <span className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[130px]">
