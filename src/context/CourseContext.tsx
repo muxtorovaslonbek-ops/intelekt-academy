@@ -119,11 +119,21 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
     const newCourse: Course = {
       ...newCourseData,
       id: crypto.randomUUID(),
+      lessons: newCourseData.lessons.map((lesson) => ({
+        ...lesson,
+        id: crypto.randomUUID(),
+        courseName: newCourseData.title,
+      })),
       studentsCount: 0,
       rating: 5.0,
     };
     setCourses((prev) => [newCourse, ...prev]);
-    upsertSupabaseCourse(newCourse);
+    upsertSupabaseCourse(newCourse).catch((error) => console.warn('Course Supabase save error:', error));
+    newCourse.lessons.forEach((lesson) => {
+      upsertSupabaseLesson(newCourse.id, newCourse.title, lesson).catch((error) =>
+        console.warn('Lesson Supabase save error:', error)
+      );
+    });
   };
 
   const updateCourse = (id: string, updates: Partial<Course>) => {
@@ -164,13 +174,18 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
     setCourses((prev) =>
       prev.map((c) => {
         if (c.id === courseId) {
-          upsertSupabaseCourse(c);
-          upsertSupabaseLesson(courseId, c.title, newLesson);
-          return {
+          const updatedCourse = {
             ...c,
             lessons: [...c.lessons, newLesson],
             lessonsCount: c.lessons.length + 1,
           };
+          upsertSupabaseCourse(updatedCourse).catch((error) =>
+            console.warn('Course Supabase save error:', error)
+          );
+          upsertSupabaseLesson(courseId, c.title, newLesson).catch((error) =>
+            console.warn('Lesson Supabase save error:', error)
+          );
+          return updatedCourse;
         }
         return c;
       })

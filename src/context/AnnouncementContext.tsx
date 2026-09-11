@@ -2,7 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Announcement } from '../types';
 import { INITIAL_ANNOUNCEMENTS } from '../data/mockData';
 import { playNotificationSound } from '../utils/audio';
-import { upsertSupabaseAnnouncement, updateSupabaseAnnouncement, deleteSupabaseAnnouncement, fetchSupabaseAnnouncements } from '../lib/supabase';
+import { useAuth } from './AuthContext';
+import {
+  supabase,
+  isSupabaseConfigured,
+  upsertSupabaseAnnouncement,
+  updateSupabaseAnnouncement,
+  deleteSupabaseAnnouncement,
+  fetchSupabaseAnnouncements,
+} from '../lib/supabase';
 
 interface AnnouncementContextType {
   announcements: Announcement[];
@@ -21,6 +29,9 @@ interface AnnouncementContextType {
 const AnnouncementContext = createContext<AnnouncementContextType | undefined>(undefined);
 
 export function AnnouncementProvider({ children }: { children: React.ReactNode }) {
+  const { currentUser } = useAuth();
+  const readStorageKey = `eduplatform-read-announcements:${currentUser?.id || 'guest'}`;
+
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
     const saved = localStorage.getItem('eduplatform-announcements');
     if (saved) {
@@ -42,13 +53,34 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
   });
 
   useEffect(() => {
-    fetchSupabaseAnnouncements().then((items) => {
-      if (items) setAnnouncements(items);
-    });
+    let active = true;
+    const refreshAnnouncements = async () => {
+      const items = await fetchSupabaseAnnouncements();
+      if (active && items) setAnnouncements(items);
+    };
+
+    refreshAnnouncements();
+    const refreshTimer = window.setInterval(refreshAnnouncements, 15000);
+    const channel = isSupabaseConfigured
+      ? supabase
+          .channel('public-announcements')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'announcements' },
+            refreshAnnouncements
+          )
+          .subscribe()
+      : null;
+
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   const [readIds, setReadIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('eduplatform-read-announcements');
+    const saved = localStorage.getItem(readStorageKey);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -64,8 +96,21 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
   }, [announcements]);
 
   useEffect(() => {
-    localStorage.setItem('eduplatform-read-announcements', JSON.stringify(readIds));
-  }, [readIds]);
+    const saved = localStorage.getItem(readStorageKey);
+    if (saved) {
+      try {
+        setReadIds(JSON.parse(saved));
+        return;
+      } catch (e) {
+        console.error('Failed to restore read announcements', e);
+      }
+    }
+    setReadIds([]);
+  }, [readStorageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(readStorageKey, JSON.stringify(readIds));
+  }, [readIds, readStorageKey]);
 
   // Listen for announcements added in other tabs or background to play chime
   useEffect(() => {
@@ -134,7 +179,7 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
     setAnnouncements([]);
     setReadIds([]);
     localStorage.removeItem('eduplatform-announcements');
-    localStorage.removeItem('eduplatform-read-announcements');
+    localStorage.removeItem(readStorageKey);
   };
 
   const togglePinAnnouncement = (id: string) => {
@@ -155,7 +200,7 @@ export function AnnouncementProvider({ children }: { children: React.ReactNode }
   };
 
   const markAllAsRead = () => {
-    setReadIds(announcements.map((a) => a.id));
+    setReadIds((previous) => Array.from(new Set([...previous, ...announcements.map((a) => a.id)])));
   };
 
   const unreadCount = announcements.filter((a) => !readIds.includes(a.id)).length;

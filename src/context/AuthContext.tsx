@@ -91,11 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           parsed[adminIdx] = {
             ...parsed[adminIdx],
             id: '00000000-0000-0000-0000-000000000001',
-            firstName: 'Aslonbek',
-            lastName: 'Muxtorov',
-            email: parsed[adminIdx].email || 'admin@aifuture.uz',
-            phoneNumber: '+998 90 123 45 67',
-            bio: "AI Future platformasi asoschisi va bosh ma'muri.",
           };
           return normalizeUsers(parsed.filter((u: User) => !u.id.startsWith('demo-')));
         }
@@ -453,19 +448,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    const adminUser: User = {
-      id: '00000000-0000-0000-0000-000000000001',
-      firstName: 'Aslonbek',
-      lastName: 'Muxtorov',
-      phoneNumber: '+998 90 123 45 67',
-      email: 'muxtorovaslonbek@gmail.com',
-      role: 'admin',
-      status: 'approved',
-      joinedDate: '2026-01-01',
-      bio: "AI Future platformasi asoschisi va bosh ma'muri.",
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      authProvider: 'email',
-    };
+    const existingAdmin = users.find((u) => u.role === 'admin');
+    const adminUser: User = existingAdmin
+      ? { ...existingAdmin, id: CANONICAL_ADMIN_ID, role: 'admin', status: 'approved' }
+      : {
+          id: CANONICAL_ADMIN_ID,
+          firstName: 'Aslonbek',
+          lastName: 'Muxtorov',
+          phoneNumber: '+998 90 123 45 67',
+          email: 'muxtorovaslonbek@gmail.com',
+          role: 'admin',
+          status: 'approved',
+          joinedDate: '2026-01-01',
+          bio: "AI Future platformasi asoschisi va bosh ma'muri.",
+          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          authProvider: 'email',
+        };
 
     setUsers((prev) => [adminUser, ...prev.filter((u) => u.id !== adminUser.id && u.role !== 'admin')]);
     setCurrentUserId(adminUser.id);
@@ -507,7 +505,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsers((prev) =>
       prev.map((u) => (u.id === currentUser.id ? updated : u))
     );
-    upsertSupabaseProfile(updated);
+    upsertSupabaseProfile(updated).then((result) => {
+      if (!result.success) {
+        console.warn('Profil Supabase ga saqlanmadi:', result.error);
+      }
+    });
   };
 
   const updateAnyUser = (userId: string, updates: Partial<User>) => {

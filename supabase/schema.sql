@@ -117,3 +117,17 @@ drop policy if exists avatars_public_access on storage.objects;
 create policy avatars_public_access on storage.objects for all to anon, authenticated
 using (bucket_id in ('avatars', 'media'))
 with check (bucket_id in ('avatars', 'media'));
+
+-- Enable live delivery of admin announcements to users who keep the app open.
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'announcements'
+  ) then
+    alter publication supabase_realtime add table public.announcements;
+  end if;
+end $$;

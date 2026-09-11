@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert, CheckCircle } from 'lucide-react';
 
@@ -25,6 +25,7 @@ export const ProtectedVideoPlayer: React.FC<ProtectedVideoPlayerProps> = ({
   const { user, profile, currentUser } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [directVideoFailed, setDirectVideoFailed] = useState(false);
 
   const activeVideoId = videoId || '';
   const activeLibraryId = libraryId || '';
@@ -55,13 +56,14 @@ export const ProtectedVideoPlayer: React.FC<ProtectedVideoPlayerProps> = ({
       </div>
 
       {/* Direct Video or Bunny.net Player */}
-      {directUrl ? (
+      {directUrl && !directVideoFailed ? (
         <video
           ref={videoRef}
           src={directUrl}
           controls
           controlsList="nodownload"
           onEnded={handleEnd}
+          onError={() => setDirectVideoFailed(true)}
           className="w-full h-full object-contain pointer-events-auto bg-black"
         />
       ) : activeVideoId && activeLibraryId ? (
@@ -76,7 +78,7 @@ export const ProtectedVideoPlayer: React.FC<ProtectedVideoPlayerProps> = ({
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
-          Ushbu dars uchun Bunny video sozlanmagan.
+          {directUrl ? 'Video formatini brauzer ocholmadi yoki fayl URL manzili ishlamayapti.' : 'Ushbu dars uchun Bunny video sozlanmagan.'}
         </div>
       )}
 

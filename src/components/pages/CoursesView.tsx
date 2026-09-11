@@ -57,6 +57,18 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
     }
   }, [selectedCourseId, courses]);
 
+  // Keep the open course and syllabus tied to the latest remote/local course data.
+  React.useEffect(() => {
+    if (!activeCourse) return;
+    const latestCourse = courses.find((course) => course.id === activeCourse.id);
+    if (!latestCourse) return;
+    setActiveCourse(latestCourse);
+    if (activeLesson) {
+      const latestLesson = latestCourse.lessons.find((lesson) => lesson.id === activeLesson.id);
+      if (latestLesson) setActiveLesson(latestLesson);
+    }
+  }, [courses]);
+
   // Extract unique categories
   const categories: string[] = ['all', ...Array.from(new Set<string>(courses.map((c) => c.category)))];
 

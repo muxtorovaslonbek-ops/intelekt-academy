@@ -72,6 +72,8 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
         );
         if (success && onSuccess) {
           onSuccess();
+        } else if (!success) {
+          setError("Ro'yxatdan o'tish yakunlanmadi. Supabase Auth va profiles jadvali sozlamalarini tekshiring.");
         }
       } else {
         if (!phoneNumber.trim()) {

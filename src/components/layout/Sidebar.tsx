@@ -19,6 +19,7 @@ import {
 
 import { ActiveRoute } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -325,6 +326,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     Taklif & Fikr
                   </span>
                 </button>
+              </div>
+
+              <div className="pt-3">
+                <PWAInstallButton variant="sidebar" />
               </div>
 
               {/* Admin CMS shortcut if user is Admin */}
