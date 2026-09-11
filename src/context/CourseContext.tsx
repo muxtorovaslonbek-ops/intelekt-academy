@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Course, Quiz, QuizQuestion, Lesson } from '../types';
 import { INITIAL_COURSES, INITIAL_QUIZZES } from '../data/mockData';
-import { fetchSupabaseCourses, upsertSupabaseCourse, upsertSupabaseLesson, isSupabaseConfigured } from '../lib/supabase';
+import { fetchSupabaseCourses, upsertSupabaseCourse, upsertSupabaseLesson, deleteSupabaseCourse, deleteSupabaseLesson, isSupabaseConfigured } from '../lib/supabase';
 
 export interface FlattenedLesson extends Lesson {
   course_name?: string;
@@ -172,6 +172,7 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
 
   const deleteCourse = (id: string) => {
     setCourses((prev) => prev.filter((c) => c.id !== id));
+    deleteSupabaseCourse(id).catch((error) => console.warn('Course Supabase delete error:', error));
   };
 
 
@@ -249,6 +250,7 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
           : c
       )
     );
+    deleteSupabaseLesson(lessonId).catch((error) => console.warn('Lesson Supabase delete error:', error));
   };
 
   const clearAllCourses = () => {
