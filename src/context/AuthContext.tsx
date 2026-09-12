@@ -200,6 +200,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshUsers]);
 
+  // Bir xil brauzerda bir nechta tab/oyna ochilgan bo'lsa (masalan, bitta tabda
+  // Admin CMS, boshqa tabda talaba akkaunti), admin qilgan har qanday
+  // o'zgarish (tasdiqlash/rad etish/kutilmoqdaga qaytarish/o'chirish)
+  // boshqa tab'larda ham DARHOL aks etishi uchun localStorage "storage"
+  // hodisasini tinglaymiz. Bu Supabase sozlanmagan (faqat local) holatlarda ham ishlaydi.
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'aifuture-users' && event.newValue) {
+        try {
+          const parsedUsers: User[] = JSON.parse(event.newValue);
+          setUsers(parsedUsers);
+
+          // Joriy foydalanuvchi boshqa tab/qurilmada (admin tomonidan)
+          // o'chirilgan bo'lsa — bu yerda ham darhol tizimdan chiqaramiz.
+          setCurrentUserId((prevId) => {
+            if (!prevId) return prevId;
+            const stillExists = parsedUsers.some((u) => u.id === prevId);
+            if (!stillExists) {
+              if (isSupabaseConfigured) {
+                supabase.auth.signOut().catch(() => {});
+              }
+              return null;
+            }
+            return prevId;
+          });
+        } catch (e) {
+          console.warn('Foydalanuvchilar ro\'yxatini sinxronlashda xatolik:', e);
+        }
+      }
+
+      // Boshqa tab o'zini tizimdan chiqargan yoki joriy foydalanuvchi
+      // o'chirilgani sababli sessiya tozalangan bo'lsa, shu tabda ham aks ettiramiz.
+      if (event.key === 'aifuture-current-user-id' && !event.newValue) {
+        setCurrentUserId(null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Listen to Supabase Auth state changes if active
   useEffect(() => {
     if (!isSupabaseConfigured) return;
