@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -18,10 +18,14 @@ import {
   SendHorizontal,
   Volume2,
   VolumeX,
+  ArrowLeft,
+  Plus,
+  ChevronRight,
+  CheckCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useFeedback } from '../../context/FeedbackContext';
-import { FeedbackType } from '../../types';
+import { useFeedback, ensureThreadMessages } from '../../context/FeedbackContext';
+import { FeedbackMessage, FeedbackType } from '../../types';
 import { isSoundEnabled, toggleSoundEnabled, playNotificationSound } from '../../utils/audio';
 
 interface ContactAdminModalProps {
@@ -80,9 +84,25 @@ const FEEDBACK_TYPES: Array<{
   },
 ];
 
+const TYPE_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  suggestion: { label: 'Taklif', icon: Lightbulb },
+  request: { label: 'Talab / Istak', icon: Target },
+  opinion: { label: 'Fikr / Mulohaza', icon: MessageCircle },
+  comment: { label: 'Izoh / Sharh', icon: FileText },
+  question: { label: 'Savol', icon: HelpCircle },
+  complaint: { label: 'Muammo / Xatolik', icon: AlertTriangle },
+};
+
+type ModalView = 'list' | 'form' | 'chat';
+
 export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, onClose }) => {
   const { currentUser } = useAuth();
-  const { sendFeedback } = useFeedback();
+  const { sendFeedback, sendUserMessage, getUserConversations, markThreadSeenByUser, getUnseenCountForUser } = useFeedback();
+
+  const conversations = getUserConversations(currentUser?.id);
+
+  const [view, setView] = useState<ModalView>('form');
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
   const [selectedType, setSelectedType] = useState<FeedbackType>('suggestion');
   const [userName, setUserName] = useState('');
@@ -93,9 +113,23 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
   const [message, setMessage] = useState('');
   const [rating, setRating] = useState<number>(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
+  const [chatInput, setChatInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // When the modal opens, decide which screen to show: if the user already
+  // has murojaat threads, show the list first; otherwise go straight to the
+  // form so first-time users aren't stuck on an empty list.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (conversations.length > 0) {
+      setView('list');
+    } else {
+      setView('form');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Synchronize sound state across all components
   useEffect(() => {
@@ -129,7 +163,31 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
     }
   }, [currentUser, isOpen]);
 
+  const activeThread: FeedbackMessage | undefined = conversations.find((c) => c.id === activeThreadId);
+
+  // Mark the open thread as seen (clears its unread badge) and keep the chat
+  // scrolled to the latest message whenever it updates (real-time replies).
+  useEffect(() => {
+    if (view === 'chat' && activeThreadId) {
+      markThreadSeenByUser(activeThreadId);
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, activeThreadId, activeThread?.messages?.length]);
+
   if (!isOpen) return null;
+
+  const openThread = (id: string) => {
+    setActiveThreadId(id);
+    setView('chat');
+  };
+
+  const startNewRequest = () => {
+    setSubject('');
+    setMessage('');
+    setErrorMsg(null);
+    setView('form');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +208,7 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
     setErrorMsg(null);
 
     try {
-      await sendFeedback({
+      const created = await sendFeedback({
         userName,
         userEmail: userEmail || undefined,
         userPhone: userPhone || undefined,
@@ -162,13 +220,17 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
         userId: currentUser?.id,
       });
 
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        setSubject('');
-        setMessage('');
+      setSubject('');
+      setMessage('');
+
+      // Logged-in users go straight into the chat thread for what they just
+      // sent, so a reply from the admin shows up right there.
+      if (currentUser?.id) {
+        setActiveThreadId(created.id);
+        setView('chat');
+      } else {
         onClose();
-      }, 2500);
+      }
     } catch {
       setErrorMsg('Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.');
     } finally {
@@ -176,9 +238,20 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
     }
   };
 
-  const handleTestSound = () => {
-    playNotificationSound('chime');
+  const handleSendChatMessage = () => {
+    if (!activeThreadId || !chatInput.trim()) return;
+    sendUserMessage(activeThreadId, chatInput);
+    setChatInput('');
   };
+
+  const headerTitle =
+    view === 'chat' ? activeThread?.subject || 'Suhbat' : view === 'list' ? "Murojaatlarim" : "Admin Bilan Bog'lanish";
+  const headerSubtitle =
+    view === 'chat'
+      ? "Admin javob yozganda shu yerda ko'rinadi — bemalol yozishingiz mumkin."
+      : view === 'list'
+      ? "Yuborgan murojaatlaringiz va admin javoblari."
+      : "Talab, taklif, fikr va izohlaringizni to'g'ridan-to'g'ri bosh ma'muriyatga qoldiring.";
 
   return (
     <AnimatePresence>
@@ -197,28 +270,41 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
           initial={{ scale: 0.95, opacity: 0, y: 15 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 15 }}
-          className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-7 z-10 my-auto text-slate-900 dark:text-white max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-7 z-10 my-auto text-slate-900 dark:text-white max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-                <MessageSquarePlus className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Admin Bilan Bog'lanish</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                    Murojaat Markazi
-                  </span>
+          <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {view === 'chat' && conversations.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setView('list')}
+                  className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+                  title="Ro'yxatga qaytish"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+              ) : (
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
+                  <MessageSquarePlus className="w-6 h-6" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 truncate">
+                  <span className="truncate">{headerTitle}</span>
+                  {view !== 'chat' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                      Murojaat Markazi
+                    </span>
+                  )}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Talab, taklif, fikr va izohlaringizni to'g'ridan-to'g'ri bosh ma'muriyatga qoldiring.
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  {headerSubtitle}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* Sound Toggle Button */}
               <button
                 type="button"
@@ -253,27 +339,148 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
             </div>
           </div>
 
-          {/* Success Notification State */}
-          {isSuccess ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="py-12 text-center space-y-4"
-            >
-              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto ring-8 ring-emerald-50 dark:ring-emerald-950/30">
-                <CheckCircle2 className="w-10 h-10" />
+          {/* LIST VIEW: past murojaat threads for this user */}
+          {view === 'list' && (
+            <div className="mt-4 flex-1 min-h-0 flex flex-col">
+              <button
+                type="button"
+                onClick={startNewRequest}
+                className="mb-3 shrink-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.01] cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Yangi Murojaat Yuborish</span>
+              </button>
+
+              <div className="space-y-2 overflow-y-auto pr-1">
+                {conversations
+                  .slice()
+                  .sort((a, b) => (a.id < b.id ? 1 : -1))
+                  .map((thread) => {
+                    const meta = TYPE_META[thread.type] || TYPE_META.comment;
+                    const TypeIcon = meta.icon;
+                    const threadMessages = ensureThreadMessages(thread);
+                    const lastMsg = threadMessages[threadMessages.length - 1];
+                    const unseen = getUnseenCountForUser(thread);
+                    return (
+                      <button
+                        key={thread.id}
+                        type="button"
+                        onClick={() => openThread(thread.id)}
+                        className="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-3"
+                      >
+                        <span className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                          <TypeIcon className="w-4 h-4" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                              {thread.subject}
+                            </span>
+                            {unseen > 0 && (
+                              <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 animate-pulse" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {lastMsg?.sender === 'admin' ? 'Admin: ' : 'Siz: '}
+                            {lastMsg?.text}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              thread.status === 'new'
+                                ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300'
+                                : thread.status === 'reviewed'
+                                ? 'bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300'
+                                : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300'
+                            }`}
+                          >
+                            {thread.status === 'new' && 'Yangi'}
+                            {thread.status === 'reviewed' && 'Javob berildi'}
+                            {thread.status === 'resolved' && 'Bajarildi'}
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                        </div>
+                      </button>
+                    );
+                  })}
               </div>
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Murojaatingiz Qabul Qilindi!
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                  Siz qoldirgan fikr, talab yoki taklif bosh administrator paneli tizimiga muvaffaqiyatli yetkazildi. Rahmat!
-                </p>
+            </div>
+          )}
+
+          {/* CHAT VIEW: two-way conversation for a single murojaat */}
+          {view === 'chat' && activeThread && (
+            <div className="mt-4 flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 pb-2">
+                {ensureThreadMessages(activeThread).map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+                        msg.sender === 'user'
+                          ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-br-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-sm'
+                      }`}
+                    >
+                      <p>{msg.text}</p>
+                      <div
+                        className={`mt-1 flex items-center gap-1 text-[10px] ${
+                          msg.sender === 'user' ? 'text-indigo-100/80 justify-end' : 'text-slate-400'
+                        }`}
+                      >
+                        {msg.sender === 'admin' && <ShieldBadge />}
+                        <span>{msg.createdAt}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
               </div>
-            </motion.div>
-          ) : (
-            <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+
+              {/* Chat Input */}
+              <div className="pt-3 mt-1 border-t border-slate-100 dark:border-slate-800 flex items-end gap-2 shrink-0">
+                <textarea
+                  rows={1}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendChatMessage();
+                    }
+                  }}
+                  placeholder="Xabaringizni yozing..."
+                  className="flex-1 resize-none px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendChatMessage}
+                  disabled={!chatInput.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0 flex items-center justify-center"
+                  title="Yuborish"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FORM VIEW: start a new murojaat */}
+          {view === 'form' && (
+            <form onSubmit={handleSubmit} className="mt-5 space-y-5 overflow-y-auto pr-1">
+              {conversations.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setView('list')}
+                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Murojaatlarim ro'yxatiga qaytish</span>
+                </button>
+              )}
+
               {/* 1. Select Feedback Category */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
@@ -450,7 +657,7 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={conversations.length > 0 ? () => setView('list') : onClose}
                     className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                   >
                     Bekor qilish
@@ -473,3 +680,10 @@ export const ContactAdminModal: React.FC<ContactAdminModalProps> = ({ isOpen, on
     </AnimatePresence>
   );
 };
+
+// Tiny inline "verified admin" badge shown next to admin chat timestamps.
+const ShieldBadge: React.FC = () => (
+  <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-indigo-500 text-white">
+    <CheckCheck className="w-2 h-2" />
+  </span>
+);
