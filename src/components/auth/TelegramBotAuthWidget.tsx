@@ -256,20 +256,20 @@ export const TelegramBotAuthWidget: React.FC<TelegramBotAuthWidgetProps> = ({
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               6 xonali tasdiqlash kodi:
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type="text"
                 maxLength={6}
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="482910"
-                className="flex-1 px-3 py-2.5 rounded-xl text-center text-lg font-mono font-black tracking-widest bg-white dark:bg-slate-900 border-2 border-sky-400 dark:border-sky-600 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-full sm:flex-1 min-w-0 px-3 py-2.5 rounded-xl text-center text-lg font-mono font-black tracking-widest bg-white dark:bg-slate-900 border-2 border-sky-400 dark:border-sky-600 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
               <button
                 type="button"
                 onClick={() => handleVerifySubmit()}
                 disabled={isSubmitting || verificationCode.length < 6}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                className="w-full sm:w-auto sm:shrink-0 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Tasdiqlash</span>
