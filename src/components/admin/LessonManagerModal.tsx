@@ -17,6 +17,8 @@ import {
   FileUp,
   Sparkles,
   Paperclip,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 
 interface LessonManagerModalProps {
@@ -25,6 +27,7 @@ interface LessonManagerModalProps {
   onAddLesson: (courseId: string, lesson: Omit<Lesson, 'id'>) => void;
   onUpdateLesson: (courseId: string, lessonId: string, updates: Partial<Lesson>) => void;
   onDeleteLesson: (courseId: string, lessonId: string) => void;
+  onMoveLesson: (courseId: string, lessonId: string, direction: 'up' | 'down') => void;
 }
 
 export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
@@ -33,6 +36,7 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
   onAddLesson,
   onUpdateLesson,
   onDeleteLesson,
+  onMoveLesson,
 }) => {
   // Mode: 'list' | 'add' | 'edit'
   const [mode, setMode] = useState<'list' | 'create' | 'edit'>('list');
@@ -305,6 +309,27 @@ export const LessonManagerModal: React.FC<LessonManagerModalProps> = ({
                       className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-800 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="flex items-start gap-3 min-w-0">
+                        {/* Tartiblash: yuqoriga/pastga surish tugmalari */}
+                        <div className="flex flex-col shrink-0 mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => onMoveLesson(course.id, lesson.id, 'up')}
+                            disabled={idx === 0}
+                            title="Darsni yuqoriga surish"
+                            className="p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onMoveLesson(course.id, lesson.id, 'down')}
+                            disabled={idx === course.lessons.length - 1}
+                            title="Darsni pastga surish"
+                            className="p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </div>
                         <span className="w-7 h-7 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
                           {idx + 1}
                         </span>
