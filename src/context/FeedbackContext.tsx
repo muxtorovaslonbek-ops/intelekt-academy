@@ -200,7 +200,11 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     };
 
     setFeedbacks((prev) => [newFeedback, ...prev]);
-    upsertSupabaseFeedback(newFeedback).catch((e) => console.warn('Feedback Supabase save note:', e));
+    upsertSupabaseFeedback(newFeedback).then((res) => {
+      if (!res.ok) {
+        alert(`Murojaat serverga saqlanmadi.\nXatolik: ${res.error || 'noma\'lum xatolik'}\n\nIltimos, internetni tekshiring va qayta urinib ko'ring.`);
+      }
+    });
 
     // Play pleasant success audio chime
     playNotificationSound('success');
@@ -212,7 +216,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     setFeedbacks((prev) =>
       prev.map((fb) => (fb.id === id ? { ...fb, status } : fb))
     );
-    updateSupabaseFeedback(id, { status }).catch((e) => console.warn('Feedback Supabase update note:', e));
+    updateSupabaseFeedback(id, { status });
   };
 
   // Admin sends a chat message to the user for this murojaat.
@@ -231,7 +235,11 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
           adminReply: trimmed,
           adminRepliedAt: replyDate,
           status: 'reviewed',
-        }).catch((e) => console.warn('Feedback Supabase reply note:', e));
+        }).then((res) => {
+          if (!res.ok) {
+            alert(`Javobingiz saqlanmadi va foydalanuvchiga yetib bormaydi.\nXatolik: ${res.error || 'noma\'lum xatolik'}\n\nIltimos, screenshot olib dasturchiga yuboring.`);
+          }
+        });
         return {
           ...fb,
           messages: updatedMessages,
@@ -259,9 +267,11 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         const newMsg: FeedbackChatMessage = { id: crypto.randomUUID(), sender: 'user', text: trimmed, createdAt: sentAt };
         const updatedMessages = [...ensureThreadMessages(fb), newMsg];
         messageCountAfterSend = updatedMessages.length;
-        updateSupabaseFeedback(id, { messages: updatedMessages, status: 'new' }).catch((e) =>
-          console.warn('Feedback Supabase message note:', e)
-        );
+        updateSupabaseFeedback(id, { messages: updatedMessages, status: 'new' }).then((res) => {
+          if (!res.ok) {
+            alert(`Xabaringiz yuborilmadi.\nXatolik: ${res.error || 'noma\'lum xatolik'}\n\nIltimos, internetni tekshirib qayta yuboring.`);
+          }
+        });
         return { ...fb, messages: updatedMessages, status: 'new' };
       })
     );
