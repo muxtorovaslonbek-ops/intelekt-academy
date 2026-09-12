@@ -60,10 +60,12 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
   };
 
   const isPending = currentUser?.status === 'pending';
+  const isRejected = currentUser?.status === 'rejected';
+  const isLocked = isPending || isRejected;
 
   // Synchronize with selectedCourseId from Dashboard or search
   React.useEffect(() => {
-    if (selectedCourseId) {
+    if (selectedCourseId && !isLocked) {
       const target = courses.find((c) => c.id === selectedCourseId);
       if (target) {
         setActiveCourse(target);
@@ -72,7 +74,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
         }
       }
     }
-  }, [selectedCourseId, courses]);
+  }, [selectedCourseId, courses, isLocked]);
 
   // Keep the open course and syllabus tied to the latest remote/local course data.
   React.useEffect(() => {
@@ -101,7 +103,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
   });
 
   const handleOpenCourse = (course: Course) => {
-    if (isPending) return;
+    if (isLocked) return;
     setActiveCourse(course);
     if (course.lessons && course.lessons.length > 0) {
       setActiveLesson(course.lessons[0]);
@@ -541,6 +543,19 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
         </div>
       )}
 
+      {/* Rejected status warning banner */}
+      {isRejected && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-200 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <div>
+              <strong className="block font-bold">Arizangiz administrator tomonidan rad etilgan:</strong>
+              <span>Kurslar va video darslar hozircha yopiq. Aniqlik kiritish uchun administrator bilan bog'laning.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search and Categories Toolbar */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -614,7 +629,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
                     </span>
                   </div>
 
-                  {isPending && (
+                  {isLocked && (
                     <div className="absolute top-3 right-3 px-2 py-1 rounded-lg bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-bold flex items-center gap-1 shadow-md border border-amber-300/30">
                       <Lock className="w-3 h-3" />
                       <span>Qulflangan</span>
@@ -658,19 +673,19 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
 
                 <NeonButton
                   onClick={() => handleOpenCourse(course)}
-                  disabled={isPending}
-                  variant={isPending ? 'primary-gradient' : 'primary-gradient'}
+                  disabled={isLocked}
+                  variant="primary-gradient"
                   size="sm"
-                  pulse={!isPending}
+                  pulse={!isLocked}
                   leftIcon={
-                    isPending ? (
+                    isLocked ? (
                       <Lock className="w-3.5 h-3.5" />
                     ) : (
                       <Play className="w-3.5 h-3.5" />
                     )
                   }
                 >
-                  <span>{isPending ? 'Tasdiq Kutilmoqda' : 'Darsni Boshlash'}</span>
+                  <span>{isPending ? 'Tasdiq Kutilmoqda' : isRejected ? 'Ariza Rad Etilgan' : 'Darsni Boshlash'}</span>
                 </NeonButton>
               </div>
             </div>
