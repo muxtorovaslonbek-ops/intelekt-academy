@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCourses } from '../../context/CourseContext';
 import { useAnnouncements } from '../../context/AnnouncementContext';
-import { useFeedback } from '../../context/FeedbackContext';
+import { useFeedback, ensureThreadMessages } from '../../context/FeedbackContext';
 import { Course, User, UserStatus, Quiz, QuizQuestion, Lesson, FeedbackType, FeedbackStatus, FeedbackMessage } from '../../types';
 import { isSoundEnabled, toggleSoundEnabled, playNotificationSound } from '../../utils/audio';
 import {
@@ -1573,23 +1573,26 @@ export const AdminCmsView: React.FC = () => {
                 { id: 'comment', label: '📝 Izoh' },
                 { id: 'question', label: '❓ Savol' },
                 { id: 'issue', label: '⚠️ Muammo' },
-              ].map((t) => (
+              ].map((t) => {
+                const filterValue = t.id === 'issue' ? 'complaint' : t.id;
+                return (
                 <button
                   key={t.id}
-                  onClick={() => setFeedbackTypeFilter(t.id as any)}
+                  onClick={() => setFeedbackTypeFilter(filterValue as any)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
-                    feedbackTypeFilter === t.id
+                    feedbackTypeFilter === filterValue
                       ? 'bg-indigo-600 text-white shadow-sm'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   {t.label}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Feedback Items List */}
+          {/* Feedback Items List (har biri o'z chat ko'rinishida) */}
           <div className="space-y-3">
             {feedbacks
               .filter((item) => {
@@ -1647,11 +1650,13 @@ export const AdminCmsView: React.FC = () => {
                     opinion: { label: 'Fikr-mulohaza', badge: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800', icon: MessageCircle },
                     comment: { label: 'Izoh', badge: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700', icon: FileText },
                     question: { label: 'Savol', badge: 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800', icon: HelpCircle },
-                    issue: { label: 'Xatolik / Muammo', badge: 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800', icon: AlertTriangle },
+                    complaint: { label: 'Xatolik / Muammo', badge: 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800', icon: AlertTriangle },
                   };
 
                   const currentType = typeStyles[item.type] || typeStyles.suggestion;
                   const TypeIcon = currentType.icon;
+                  const threadMessages = ensureThreadMessages(item);
+                  const isReplying = replyingFeedbackId === item.id;
 
                   return (
                     <div
@@ -1674,12 +1679,6 @@ export const AdminCmsView: React.FC = () => {
                             {item.userName || 'Foydalanuvchi'}
                           </span>
 
-                          {item.userRole && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">
-                              {item.userRole}
-                            </span>
-                          )}
-
                           <span className="text-slate-300 dark:text-slate-700">•</span>
 
                           <span className="text-xs text-slate-400 font-mono">
@@ -1699,7 +1698,7 @@ export const AdminCmsView: React.FC = () => {
                             }`}
                           >
                             {item.status === 'new' && 'Yangi'}
-                            {item.status === 'reviewed' && 'Ko\'rib chiqildi'}
+                            {item.status === 'reviewed' && 'Javob berildi'}
                             {item.status === 'resolved' && 'Bajarildi'}
                           </span>
                         </div>
@@ -1729,16 +1728,16 @@ export const AdminCmsView: React.FC = () => {
                           </a>
                         )}
 
-                        {item.telegramUsername && (
+                        {item.userTelegram && (
                           <a
-                            href={`https://t.me/${item.telegramUsername.replace('@', '')}`}
+                            href={`https://t.me/${item.userTelegram.replace('@', '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline font-mono"
                             title="Telegram orqali bog'lanish"
                           >
                             <Send className="w-3.5 h-3.5" />
-                            <span>@{item.telegramUsername.replace('@', '')}</span>
+                            <span>@{item.userTelegram.replace('@', '')}</span>
                           </a>
                         )}
 
@@ -1764,38 +1763,40 @@ export const AdminCmsView: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Content Subject & Message */}
-                      <div className="mt-1 space-y-2">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                          {item.subject}
-                        </h4>
-                        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                          {item.message}
-                        </div>
+                      {/* Subject */}
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                        {item.subject}
+                      </h4>
+
+                      {/* Chat Thread: to'liq yozishmalar tarixi (foydalanuvchi <-> admin) */}
+                      <div className="mt-2.5 space-y-2 max-h-72 overflow-y-auto pr-1">
+                        {threadMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+                                msg.sender === 'admin'
+                                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-br-sm'
+                                  : 'bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-bl-sm'
+                              }`}
+                            >
+                              <p>{msg.text}</p>
+                              <div
+                                className={`mt-1 text-[10px] font-mono ${
+                                  msg.sender === 'admin' ? 'text-indigo-100/80 text-right' : 'text-slate-400'
+                                }`}
+                              >
+                                {msg.sender === 'admin' ? 'Admin' : item.userName || 'Foydalanuvchi'} • {msg.createdAt}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
-                      {/* Existing Admin Reply */}
-                      {item.adminReply && (
-                        <div className="mt-3 p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 space-y-1">
-                          <div className="flex items-center justify-between text-xs text-purple-800 dark:text-purple-300 font-bold">
-                            <span className="flex items-center gap-1.5">
-                              <Reply className="w-3.5 h-3.5" />
-                              <span>Admin Javobi:</span>
-                            </span>
-                            {item.repliedAt && (
-                              <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-normal">
-                                {item.repliedAt}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                            {item.adminReply}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Inline Reply Form */}
-                      {replyingFeedbackId === item.id && (
+                      {/* Inline Reply Box */}
+                      {isReplying && (
                         <div className="mt-3 p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 space-y-2">
                           <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                             Foydalanuvchiga javob yo'llash:
@@ -1830,7 +1831,7 @@ export const AdminCmsView: React.FC = () => {
                               className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
                             >
                               <Send className="w-3 h-3" />
-                              <span>Javobni Saqlash</span>
+                              <span>Xabarni Yuborish</span>
                             </button>
                           </div>
                         </div>
@@ -1875,17 +1876,17 @@ export const AdminCmsView: React.FC = () => {
                           )}
 
                           {/* Reply Trigger */}
-                          {replyingFeedbackId !== item.id && (
+                          {!isReplying && (
                             <button
                               type="button"
                               onClick={() => {
                                 setReplyingFeedbackId(item.id);
-                                setReplyText(item.adminReply || '');
+                                setReplyText('');
                               }}
                               className="px-2.5 py-1 rounded-lg text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 transition-all flex items-center gap-1 cursor-pointer"
                             >
                               <Reply className="w-3.5 h-3.5" />
-                              <span>{item.adminReply ? 'Javobni tahrirlash' : 'Javob yozish'}</span>
+                              <span>Javob yozish</span>
                             </button>
                           )}
                         </div>
