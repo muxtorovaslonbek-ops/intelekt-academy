@@ -45,7 +45,7 @@ interface AuthContextType {
   updateAnyUser: (userId: string, updates: Partial<User>) => void;
   addUser: (userData: Omit<User, 'id' | 'joinedDate'>) => void;
   deleteUser: (userId: string) => void;
-  approveUser: (userId: string) => void;
+  approveUser: (userId: string, courseAccess?: 'all' | string[]) => void;
   rejectUser: (userId: string) => void;
   switchUserRoleOrStatus: (userId: string, status: UserStatus, role?: UserRole) => void;
   refreshUsers: () => Promise<void>;
@@ -639,7 +639,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const approveUser = (userId: string) => {
+  // courseAccess: 'all' -> hamma kurs birdan ochiladi
+  //               string[] -> faqat shu id'lardagi kurslar ochiladi (qolganlari qulfda qoladi)
+  //               berilmasa -> default 'all' (hammasi ochiq)
+  const approveUser = (userId: string, courseAccess: 'all' | string[] = 'all') => {
     if (currentUser?.role !== 'admin') {
       console.warn("Faqat administrator foydalanuvchini tasdiqlashi mumkin!");
       return;
@@ -647,7 +650,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === userId) {
-          const updated = { ...u, status: 'approved' as UserStatus };
+          const updated = { ...u, status: 'approved' as UserStatus, courseAccess };
           upsertSupabaseProfile(updated);
           return updated;
         }
