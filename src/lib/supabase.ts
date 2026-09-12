@@ -113,6 +113,7 @@ export async function upsertSupabaseCourse(course: Course): Promise<boolean> {
       description: course.description,
       thumbnail: course.thumbnail,
       status: course.status,
+      order_index: course.order ?? 0,
       updated_at: new Date().toISOString(),
     });
     return !error;
@@ -143,6 +144,7 @@ export async function upsertSupabaseLesson(courseId: string, courseName: string,
       image_url: lesson.imageUrl || null,
       image_name: lesson.imageName || null,
       attachments: lesson.attachments || [],
+      order_index: lesson.order ?? 0,
       updated_at: new Date().toISOString(),
     });
     return !error;
@@ -318,13 +320,15 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
     const { data: coursesData, error: coursesError } = await supabase
       .from('courses')
       .select('*')
+      .order('order_index', { ascending: true })
       .order('created_at', { ascending: false });
 
     if (coursesError || !coursesData || coursesData.length === 0) return null;
 
     const { data: lessonsData } = await supabase
       .from('lessons')
-      .select('*');
+      .select('*')
+      .order('order_index', { ascending: true });
 
     return coursesData.map((c) => {
       const courseLessons: Lesson[] = (lessonsData || [])
@@ -345,7 +349,9 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
           attachments: l.attachments || undefined,
           description: l.description || '',
           courseName: c.title,
-        }));
+          order: typeof l.order_index === 'number' ? l.order_index : 0,
+        }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
       return {
         id: c.id,
@@ -361,8 +367,9 @@ export async function fetchSupabaseCourses(): Promise<Course[] | null> {
         thumbnail: c.thumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
         status: c.status || 'active',
         lessons: courseLessons,
+        order: typeof c.order_index === 'number' ? c.order_index : 0,
       };
-    });
+    }).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   } catch (err) {
     console.warn('Could not fetch Supabase courses:', err);
     return null;
