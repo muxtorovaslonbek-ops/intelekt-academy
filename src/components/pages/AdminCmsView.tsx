@@ -186,6 +186,9 @@ export const AdminCmsView: React.FC = () => {
   // USER MANAGEMENT STATE
   const [userSearch, setUserSearch] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  // Foydalanuvchini tasdiqlashda qaysi kurslarni ochish kerakligini so'rash uchun modal holati
+  const [approveModalUser, setApproveModalUser] = useState<User | null>(null);
+  const [approveSelectedCourseIds, setApproveSelectedCourseIds] = useState<string[]>([]);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -917,7 +920,10 @@ export const AdminCmsView: React.FC = () => {
                             {u.status === 'pending' && (
                               <>
                                 <button
-                                  onClick={() => approveUser(u.id)}
+                                  onClick={() => {
+                                    setApproveModalUser(u);
+                                    setApproveSelectedCourseIds([]);
+                                  }}
                                   title="Tasdiqlash (Approve)"
                                   className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all cursor-pointer"
                                 >
@@ -2286,6 +2292,83 @@ export const AdminCmsView: React.FC = () => {
             }
           }}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: TASDIQLASHDA QAYSI KURSLARNI OCHISH KERAKLIGINI SO'RASH             */}
+      {/* ========================================================================= */}
+      {approveModalUser && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 max-w-md w-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                {approveModalUser.firstName} {approveModalUser.lastName} — Kurslarni ochish
+              </h3>
+              <button
+                onClick={() => setApproveModalUser(null)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Foydalanuvchini tasdiqlashdan oldin, unga qaysi kurslarni ochib berishni tanlang.
+            </p>
+
+            <button
+              onClick={() => {
+                approveUser(approveModalUser.id, 'all');
+                setApproveModalUser(null);
+              }}
+              className="w-full px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer"
+            >
+              Barcha kurslarni ochish
+            </button>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-2">
+              <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase">
+                Yoki tanlab oching
+              </p>
+              <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                {courses.map((course) => {
+                  const checked = approveSelectedCourseIds.includes(course.id);
+                  return (
+                    <label
+                      key={course.id}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer text-xs text-slate-700 dark:text-slate-200"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setApproveSelectedCourseIds((prev) => [...prev, course.id]);
+                          } else {
+                            setApproveSelectedCourseIds((prev) => prev.filter((id) => id !== course.id));
+                          }
+                        }}
+                        className="cursor-pointer"
+                      />
+                      <span className="truncate">{course.title}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => {
+                  approveUser(approveModalUser.id, approveSelectedCourseIds);
+                  setApproveModalUser(null);
+                }}
+                disabled={approveSelectedCourseIds.length === 0}
+                className="w-full px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all cursor-pointer"
+              >
+                Tanlangan kurslarni ochish ({approveSelectedCourseIds.length})
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ========================================================================= */}
