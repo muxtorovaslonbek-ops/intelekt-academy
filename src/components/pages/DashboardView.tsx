@@ -29,6 +29,8 @@ export const DashboardView: React.FC<{ onRouteChange: (route: ActiveRoute) => vo
   const { courses, quizzes, completedLessons, setSelectedCourseId, setSelectedQuizId } = useCourses();
 
   const isPending = currentUser?.status === 'pending';
+  const isRejected = currentUser?.status === 'rejected';
+  const isLocked = isPending || isRejected;
   const userId = currentUser?.id || 'guest';
 
   // --------------------------------------------------------------------------
@@ -159,7 +161,7 @@ export const DashboardView: React.FC<{ onRouteChange: (route: ActiveRoute) => vo
               leftIcon={<BookOpen className="w-4 h-4 text-indigo-600" />}
               rightIcon={<ArrowRight className="w-4 h-4 text-indigo-600 group-hover/neon-btn:translate-x-1 transition-transform" />}
             >
-              <span>{isPending ? 'Kurslar (Qulflangan)' : "Boshlash va Kurslarni Ko'rish"}</span>
+              <span>{isLocked ? 'Kurslar (Qulflangan)' : "Boshlash va Kurslarni Ko'rish"}</span>
             </NeonButton>
 
             {/* AI Assistant Button */}
@@ -361,7 +363,7 @@ export const DashboardView: React.FC<{ onRouteChange: (route: ActiveRoute) => vo
                     }}
                     className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.03] active:scale-[0.98]"
                   >
-                    <span>{isPending ? 'Kursni Ko\'rish' : 'Boshlash'}</span>
+                    <span>{isLocked ? 'Kursni Ko\'rish' : 'Boshlash'}</span>
                     <Play className="w-3 h-3" />
                   </button>
                 </div>
