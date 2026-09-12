@@ -215,7 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-[88vw] max-w-80 sm:max-w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 z-50 space-y-3 animate-in fade-in-50 duration-150">
+              <div className="fixed top-[calc(var(--safe-top,0px)+3.75rem)] sm:top-[calc(var(--safe-top,0px)+4.25rem)] right-2 sm:right-4 w-[88vw] max-w-80 sm:max-w-96 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 z-50 space-y-3 animate-in fade-in-50 duration-150">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                   <div className="flex items-center gap-1.5">
                     <Bell className="w-4 h-4 text-indigo-600" />
