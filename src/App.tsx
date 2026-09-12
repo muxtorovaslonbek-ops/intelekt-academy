@@ -16,9 +16,53 @@ import { AdminCmsView } from './components/pages/AdminCmsView';
 import { NotFoundView } from './components/pages/NotFoundView';
 import { ActiveRoute } from './types';
 
+// F5 bilan sahifa yangilanganda foydalanuvchi qaysi bo'limda turgan bo'lsa,
+// o'sha bo'limda qolishi uchun joriy bo'lim nomini sessionStorage'da saqlaymiz.
+// Bu FAQAT "qaysi bo'lim ochiq edi" degan bitta matnni saqlaydi — hech qanday
+// kurs/foydalanuvchi/boshqa ma'lumotga tegmaydi va ularning yuklanishiga
+// ta'sir qilmaydi.
+const ACTIVE_ROUTE_STORAGE_KEY = 'eduplatform-active-route';
+
+const VALID_ROUTES: ActiveRoute[] = [
+  'dashboard',
+  'profile',
+  'courses',
+  'tests',
+  'ai-assistant',
+  'settings',
+  'admin-cms',
+];
+
+function getInitialActiveRoute(): ActiveRoute {
+  try {
+    const saved = sessionStorage.getItem(ACTIVE_ROUTE_STORAGE_KEY);
+    if (saved && (VALID_ROUTES as string[]).includes(saved)) {
+      return saved as ActiveRoute;
+    }
+  } catch (e) {
+    // sessionStorage mavjud bo'lmasa (masalan, xususiy rejim cheklovi),
+    // shunchaki standart bo'limdan boshlaymiz.
+  }
+  return 'dashboard';
+}
+
 function MainApp() {
   const { isAuthenticated, currentUser } = useAuth();
-  const [activeRoute, setActiveRoute] = useState<ActiveRoute>('dashboard');
+  const [activeRoute, setActiveRouteState] = useState<ActiveRoute>(getInitialActiveRoute);
+
+  const setActiveRoute = (route: ActiveRoute) => {
+    setActiveRouteState(route);
+    try {
+      // "intro" va "not-found" vaqtinchalik holatlar — ularni saqlab qo'ysak,
+      // keyingi safar sahifa ochilganda noqulay holatga tushirib qo'yishi
+      // mumkin, shuning uchun faqat haqiqiy bo'limlarni saqlaymiz.
+      if ((VALID_ROUTES as string[]).includes(route)) {
+        sessionStorage.setItem(ACTIVE_ROUTE_STORAGE_KEY, route);
+      }
+    } catch (e) {
+      // sessionStorage ishlamasa ham dastur ishlashda davom etadi.
+    }
+  };
 
   // If user is not authenticated: Show the Animated IT & AI Learning Intro with embedded Auth/Admin portal
   if (!isAuthenticated || !currentUser) {
