@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Course, Quiz, QuizQuestion, Lesson } from '../types';
 import { INITIAL_COURSES, INITIAL_QUIZZES } from '../data/mockData';
 import { fetchSupabaseCourses, upsertSupabaseCourse, upsertSupabaseLesson, deleteSupabaseCourse, deleteSupabaseLesson, isSupabaseConfigured } from '../lib/supabase';
@@ -21,6 +21,10 @@ interface CourseContextType {
   addLessonToCourse: (courseId: string, lesson: Omit<Lesson, 'id'>) => void;
   updateLessonInCourse: (courseId: string, lessonId: string, updates: Partial<Lesson>) => void;
   deleteLessonFromCourse: (courseId: string, lessonId: string) => void;
+  moveCourseUp: (courseId: string) => void;
+  moveCourseDown: (courseId: string) => void;
+  moveLessonUp: (courseId: string, lessonId: string) => void;
+  moveLessonDown: (courseId: string, lessonId: string) => void;
   addQuiz: (quiz: Omit<Quiz, 'id'>) => void;
   updateQuiz: (id: string, updates: Partial<Quiz>) => void;
   deleteQuiz: (id: string) => void;
@@ -42,18 +46,27 @@ function isUuid(value: string): boolean {
 }
 
 function normalizeCourseIds(items: Course[]): Course[] {
-  return items.map((course) => {
-    const courseId = isUuid(course.id) ? course.id : crypto.randomUUID();
-    return {
-      ...course,
-      id: courseId,
-      lessons: course.lessons.map((lesson) => ({
-        ...lesson,
-        id: isUuid(lesson.id) ? lesson.id : crypto.randomUUID(),
-        courseName: course.title,
-      })),
-    };
-  });
+  return items
+    .map((course, courseIndex) => {
+      const courseId = isUuid(course.id) ? course.id : crypto.randomUUID();
+      return {
+        ...course,
+        id: courseId,
+        // Mavjud tartib saqlanib qoladi: agar "order" hali belgilanmagan
+        // bo'lsa, joriy ro'yxatdagi o'rniga (index) teng qilib beriladi,
+        // shu bilan hech qanday kurs/dars o'rni o'zgarmaydi.
+        order: typeof course.order === 'number' ? course.order : courseIndex,
+        lessons: course.lessons
+          .map((lesson, lessonIndex) => ({
+            ...lesson,
+            id: isUuid(lesson.id) ? lesson.id : crypto.randomUUID(),
+            courseName: course.title,
+            order: typeof lesson.order === 'number' ? lesson.order : lessonIndex,
+          }))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      };
+    })
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 export function CourseProvider({ children }: { children: React.ReactNode }) {
@@ -141,16 +154,19 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
   }, [quizzes]);
 
   const addCourse = (newCourseData: Omit<Course, 'id' | 'studentsCount' | 'rating'>) => {
+    const minOrder = courses.length > 0 ? Math.min(...courses.map((c) => c.order ?? 0)) : 0;
     const newCourse: Course = {
       ...newCourseData,
       id: crypto.randomUUID(),
-      lessons: newCourseData.lessons.map((lesson) => ({
+      lessons: newCourseData.lessons.map((lesson, idx) => ({
         ...lesson,
         id: crypto.randomUUID(),
         courseName: newCourseData.title,
+        order: idx,
       })),
       studentsCount: 0,
       rating: 5.0,
+      order: minOrder - 1,
     };
     setCourses((prev) => [newCourse, ...prev]);
     upsertSupabaseCourse(newCourse).catch((error) => console.warn('Course Supabase save error:', error));
@@ -193,9 +209,14 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addLessonToCourse = (courseId: string, lesson: Omit<Lesson, 'id'>) => {
+    const targetCourse = courses.find((c) => c.id === courseId);
+    const maxOrder = targetCourse && targetCourse.lessons.length > 0
+      ? Math.max(...targetCourse.lessons.map((l) => l.order ?? 0))
+      : -1;
     const newLesson: Lesson = {
       ...lesson,
       id: crypto.randomUUID(),
+      order: maxOrder + 1,
     };
     setCourses((prev) =>
       prev.map((c) => {
@@ -251,6 +272,99 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
       )
     );
     deleteSupabaseLesson(lessonId).catch((error) => console.warn('Lesson Supabase delete error:', error));
+  };
+
+  // ---------------------------------------------------------------------
+  // TARTIBLASH (REORDERING): faqat "order" raqamini almashtiradi, boshqa
+  // hech qanday maydonga (video, PDF, matn va h.k.) tegmaydi — shu sabab
+  // butunlay xavfsiz.
+  // ---------------------------------------------------------------------
+  const moveCourseUp = (courseId: string) => {
+    setCourses((prev) => {
+      const sorted = [...prev].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const idx = sorted.findIndex((c) => c.id === courseId);
+      if (idx <= 0) return prev; // allaqachon birinchi o'rinda
+      const current = sorted[idx];
+      const above = sorted[idx - 1];
+      const currentOrder = current.order ?? idx;
+      const aboveOrder = above.order ?? idx - 1;
+      upsertSupabaseCourse({ ...current, order: aboveOrder }).catch(() => {});
+      upsertSupabaseCourse({ ...above, order: currentOrder }).catch(() => {});
+      return prev.map((c) => {
+        if (c.id === current.id) return { ...c, order: aboveOrder };
+        if (c.id === above.id) return { ...c, order: currentOrder };
+        return c;
+      });
+    });
+  };
+
+  const moveCourseDown = (courseId: string) => {
+    setCourses((prev) => {
+      const sorted = [...prev].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const idx = sorted.findIndex((c) => c.id === courseId);
+      if (idx === -1 || idx >= sorted.length - 1) return prev; // allaqachon oxirgi o'rinda
+      const current = sorted[idx];
+      const below = sorted[idx + 1];
+      const currentOrder = current.order ?? idx;
+      const belowOrder = below.order ?? idx + 1;
+      upsertSupabaseCourse({ ...current, order: belowOrder }).catch(() => {});
+      upsertSupabaseCourse({ ...below, order: currentOrder }).catch(() => {});
+      return prev.map((c) => {
+        if (c.id === current.id) return { ...c, order: belowOrder };
+        if (c.id === below.id) return { ...c, order: currentOrder };
+        return c;
+      });
+    });
+  };
+
+  const moveLessonUp = (courseId: string, lessonId: string) => {
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        const sorted = [...c.lessons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const idx = sorted.findIndex((l) => l.id === lessonId);
+        if (idx <= 0) return c; // allaqachon birinchi dars
+        const current = sorted[idx];
+        const above = sorted[idx - 1];
+        const currentOrder = current.order ?? idx;
+        const aboveOrder = above.order ?? idx - 1;
+        const updatedLessons = c.lessons.map((l) => {
+          if (l.id === current.id) return { ...l, order: aboveOrder };
+          if (l.id === above.id) return { ...l, order: currentOrder };
+          return l;
+        });
+        const updatedCurrent = updatedLessons.find((l) => l.id === current.id)!;
+        const updatedAbove = updatedLessons.find((l) => l.id === above.id)!;
+        upsertSupabaseLesson(courseId, c.title, updatedCurrent).catch(() => {});
+        upsertSupabaseLesson(courseId, c.title, updatedAbove).catch(() => {});
+        return { ...c, lessons: updatedLessons };
+      })
+    );
+  };
+
+  const moveLessonDown = (courseId: string, lessonId: string) => {
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        const sorted = [...c.lessons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const idx = sorted.findIndex((l) => l.id === lessonId);
+        if (idx === -1 || idx >= sorted.length - 1) return c; // allaqachon oxirgi dars
+        const current = sorted[idx];
+        const below = sorted[idx + 1];
+        const currentOrder = current.order ?? idx;
+        const belowOrder = below.order ?? idx + 1;
+        const updatedLessons = c.lessons.map((l) => {
+          if (l.id === current.id) return { ...l, order: belowOrder };
+          if (l.id === below.id) return { ...l, order: currentOrder };
+          return l;
+        });
+        const updatedCurrent = updatedLessons.find((l) => l.id === current.id)!;
+        const updatedBelow = updatedLessons.find((l) => l.id === below.id)!;
+        upsertSupabaseLesson(courseId, c.title, updatedCurrent).catch(() => {});
+        upsertSupabaseLesson(courseId, c.title, updatedBelow).catch(() => {});
+        return { ...c, lessons: updatedLessons };
+      })
+    );
   };
 
   const clearAllCourses = () => {
@@ -327,8 +441,20 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  // Har doim "order" bo'yicha saralangan holda ko'rsatiladi, shu bilan
+  // tartiblash (yuqoriga/pastga surish) tugmalari darhol va to'g'ri
+  // ko'rinishda aks etadi.
+  const sortedCourses: Course[] = useMemo(() => {
+    return [...courses]
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((course) => ({
+        ...course,
+        lessons: [...course.lessons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      }));
+  }, [courses]);
+
   // Flattened lessons list across all courses with Bunny Video ID
-  const lessons: FlattenedLesson[] = courses.flatMap((course) =>
+  const lessons: FlattenedLesson[] = sortedCourses.flatMap((course) =>
     course.lessons.map((lesson) => ({
       ...lesson,
       course_name: course.title,
@@ -348,7 +474,7 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
   return (
     <CourseContext.Provider
       value={{
-        courses,
+        courses: sortedCourses,
         quizzes,
         lessons,
         completedLessons,
@@ -360,6 +486,10 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
         addLessonToCourse,
         updateLessonInCourse,
         deleteLessonFromCourse,
+        moveCourseUp,
+        moveCourseDown,
+        moveLessonUp,
+        moveLessonDown,
         addQuiz,
         updateQuiz,
         deleteQuiz,
