@@ -48,6 +48,7 @@ export async function upsertSupabaseProfile(user: User): Promise<{ success: bool
         role: user.role,
         status: user.status,
         avatar_url: user.avatarUrl,
+        course_access: user.courseAccess ?? null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
 
@@ -89,6 +90,7 @@ export async function fetchSupabaseProfiles(): Promise<User[] | null> {
       avatarUrl: p.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
       joinedDate: (p.created_at ? p.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
       bio: p.bio || '',
+      courseAccess: p.course_access ?? 'all',
     }));
   } catch (err) {
     console.warn('Could not fetch Supabase profiles:', err);
