@@ -190,8 +190,8 @@ export async function deleteSupabaseLesson(lessonId: string): Promise<boolean> {
   }
 }
 
-export async function upsertSupabaseFeedback(feedback: FeedbackMessage): Promise<boolean> {
-  if (!isSupabaseConfigured) return true;
+export async function upsertSupabaseFeedback(feedback: FeedbackMessage): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: true };
 
   try {
     const { error } = await supabase.from('feedback').upsert({
@@ -210,15 +210,19 @@ export async function upsertSupabaseFeedback(feedback: FeedbackMessage): Promise
       admin_replied_at: feedback.adminRepliedAt || null,
       messages: feedback.messages && feedback.messages.length ? feedback.messages : [],
     });
-    return !error;
-  } catch (err) {
-    console.warn('Feedback sync error:', err);
-    return false;
+    if (error) console.error('[Feedback] upsert failed:', error.message, error);
+    return { ok: !error, error: error?.message };
+  } catch (err: any) {
+    console.error('[Feedback] upsert threw:', err);
+    return { ok: false, error: err?.message || String(err) };
   }
 }
 
-export async function updateSupabaseFeedback(feedbackId: string, updates: Partial<FeedbackMessage>): Promise<boolean> {
-  if (!isSupabaseConfigured) return true;
+export async function updateSupabaseFeedback(
+  feedbackId: string,
+  updates: Partial<FeedbackMessage>
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: true };
 
   const payload = {
     ...(updates.status ? { status: updates.status } : {}),
@@ -226,8 +230,14 @@ export async function updateSupabaseFeedback(feedbackId: string, updates: Partia
     ...(updates.adminRepliedAt !== undefined ? { admin_replied_at: updates.adminRepliedAt } : {}),
     ...(updates.messages !== undefined ? { messages: updates.messages } : {}),
   };
-  const { error } = await supabase.from('feedback').update(payload).eq('id', feedbackId);
-  return !error;
+  try {
+    const { error } = await supabase.from('feedback').update(payload).eq('id', feedbackId);
+    if (error) console.error('[Feedback] update failed:', error.message, error);
+    return { ok: !error, error: error?.message };
+  } catch (err: any) {
+    console.error('[Feedback] update threw:', err);
+    return { ok: false, error: err?.message || String(err) };
+  }
 }
 
 export async function deleteSupabaseFeedback(feedbackId: string): Promise<boolean> {
@@ -239,6 +249,7 @@ export async function deleteSupabaseFeedback(feedbackId: string): Promise<boolea
 export async function fetchSupabaseFeedback(): Promise<FeedbackMessage[] | null> {
   if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
+  if (error) console.error('[Feedback] fetch failed:', error.message, error);
   if (error || !data) return null;
   return data.map((item) => ({
     id: item.id,
