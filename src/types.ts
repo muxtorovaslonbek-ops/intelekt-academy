@@ -14,6 +14,13 @@ export interface User {
   avatarUrl?: string;
   joinedDate: string;
   bio?: string;
+  /**
+   * Foydalanuvchi qaysi kurslarga kira oladi:
+   * - 'all'        -> barcha kurslar ochiq (admin "Barchasini ochish" tugmasini bosgan)
+   * - string[]     -> faqat shu ro'yxatdagi kurs id'lari ochiq (admin tanlab ochgan)
+   * - undefined    -> eski (oldingi) foydalanuvchilar uchun, tasdiqlangan bo'lsa hammasi ochiq deb hisoblanadi
+   */
+  courseAccess?: 'all' | string[];
 }
 
 export interface LessonAttachment {
