@@ -172,6 +172,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className={`p-3.5 rounded-xl border ${
                     currentUser.status === 'pending'
                       ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50'
+                      : currentUser.status === 'rejected'
+                      ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50'
                       : currentUser.role === 'admin'
                       ? 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/50'
                       : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50'
@@ -196,6 +198,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
                             Kutilmoqda (Pending)
                           </span>
+                        ) : currentUser.status === 'rejected' ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-700 dark:text-rose-300">
+                            <Lock className="w-3 h-3 text-rose-500" />
+                            Rad etilgan
+                          </span>
                         ) : currentUser.role === 'admin' ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 dark:text-purple-300">
                             <ShieldCheck className="w-3 h-3 text-purple-500" />
@@ -215,6 +222,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="mt-2.5 pt-2 border-t border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-200 flex items-center justify-between">
                       <span>Kurslar & testlar bloklangan</span>
                       <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    </div>
+                  )}
+                  {currentUser.status === 'rejected' && (
+                    <div className="mt-2.5 pt-2 border-t border-rose-200/60 dark:border-rose-900/40 text-[11px] text-rose-800 dark:text-rose-200 flex items-center justify-between">
+                      <span>Kurslar & testlar bloklangan</span>
+                      <Lock className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                     </div>
                   )}
                 </div>
