@@ -118,6 +118,34 @@ create policy avatars_public_access on storage.objects for all to anon, authenti
 using (bucket_id in ('avatars', 'media'))
 with check (bucket_id in ('avatars', 'media'));
 
+-- ============================================================================
+-- TELEGRAM TASDIQLASH KODLARI (xavfsiz ro'yxatdan o'tish uchun)
+-- ----------------------------------------------------------------------------
+-- Bu jadval faqat serverdagi (Vercel Function) kod tomonidan
+-- SUPABASE_SERVICE_ROLE_KEY bilan o'qiladi/yoziladi. Shu sabab uni ataylab
+-- anon/authenticated uchun OCHIQ QILMAYMIZ — RLS yoqilgan holda qoladi va
+-- hech qanday public policy yaratilmaydi, ya'ni brauzerdan (anon key bilan)
+-- bu jadvalga umuman kira olmaydi.
+-- ============================================================================
+create table if not exists public.telegram_verification_codes (
+  id uuid primary key default uuid_generate_v4(),
+  code text not null,
+  chat_id bigint not null,
+  telegram_username text,
+  first_name text,
+  last_name text,
+  consumed boolean not null default false,
+  expires_at timestamptz not null,
+  created_at timestamptz default now()
+);
+
+create index if not exists telegram_codes_code_idx on public.telegram_verification_codes(code);
+create index if not exists telegram_codes_chat_id_idx on public.telegram_verification_codes(chat_id);
+
+alter table public.telegram_verification_codes enable row level security;
+-- Diqqat: bu yerda ataylab hech qanday policy yaratilmagan — shu bilan
+-- jadval faqat Service Role kaliti orqali (ya'ni faqat serverdan) ochiladi.
+
 -- Enable live delivery of admin announcements to users who keep the app open.
 do $$
 begin
