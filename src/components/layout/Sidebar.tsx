@@ -59,13 +59,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'courses',
       label: "Kurslar va Yo'nalishlar",
       icon: BookOpen,
-      locked: currentUser?.status === 'pending',
+      locked: currentUser?.status === 'pending' || currentUser?.status === 'rejected',
     },
     {
       id: 'tests',
       label: 'Interaktiv testlar',
       icon: CheckSquare,
-      locked: currentUser?.status === 'pending',
+      locked: currentUser?.status === 'pending' || currentUser?.status === 'rejected',
     },
     {
       id: 'ai-assistant',
