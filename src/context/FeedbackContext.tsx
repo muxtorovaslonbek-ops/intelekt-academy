@@ -93,7 +93,36 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     const refreshFeedbacks = async () => {
       const items = await fetchSupabaseFeedback();
-      if (active && items) setFeedbacks(items);
+      if (!active || !items) return;
+      setFeedbacks((prev) => {
+        // Merge instead of blindly overwriting: a poll/realtime refresh can
+        // land a split-second before the server fully reflects a write we
+        // just made, which would otherwise make a just-sent message flash
+        // and disappear. A thread's message count only ever grows, so if
+        // what we already have locally is "ahead" of the fetched copy, keep
+        // our local messages/status and just refresh the rest.
+        const merged = items.map((incoming) => {
+          const existing = prev.find((p) => p.id === incoming.id);
+          if (!existing) return incoming;
+          const existingCount = existing.messages?.length || 0;
+          const incomingCount = incoming.messages?.length || 0;
+          if (existingCount > incomingCount) {
+            return {
+              ...incoming,
+              messages: existing.messages,
+              adminReply: existing.adminReply,
+              adminRepliedAt: existing.adminRepliedAt,
+              status: existing.status,
+            };
+          }
+          return incoming;
+        });
+        // Keep any thread that was just created locally and hasn't shown up
+        // in a server read yet.
+        const incomingIds = new Set(items.map((i) => i.id));
+        const localOnly = prev.filter((p) => !incomingIds.has(p.id));
+        return [...merged, ...localOnly];
+      });
     };
 
     refreshFeedbacks();
