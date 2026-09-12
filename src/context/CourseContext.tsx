@@ -290,11 +290,15 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
       const aboveOrder = above.order ?? idx - 1;
       upsertSupabaseCourse({ ...current, order: aboveOrder }).catch(() => {});
       upsertSupabaseCourse({ ...above, order: currentOrder }).catch(() => {});
-      return prev.map((c) => {
+      // MUHIM: faqat "order" maydonini almashtirish yetarli emas — massiv
+      // (array)ning o'zi ham shu tartibga qarab qayta saralanishi kerak,
+      // aks holda ro'yxat ekranda vizual ravishda o'zgarmay qoladi.
+      const updated = prev.map((c) => {
         if (c.id === current.id) return { ...c, order: aboveOrder };
         if (c.id === above.id) return { ...c, order: currentOrder };
         return c;
       });
+      return updated.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     });
   };
 
@@ -309,11 +313,12 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
       const belowOrder = below.order ?? idx + 1;
       upsertSupabaseCourse({ ...current, order: belowOrder }).catch(() => {});
       upsertSupabaseCourse({ ...below, order: currentOrder }).catch(() => {});
-      return prev.map((c) => {
+      const updated = prev.map((c) => {
         if (c.id === current.id) return { ...c, order: belowOrder };
         if (c.id === below.id) return { ...c, order: currentOrder };
         return c;
       });
+      return updated.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     });
   };
 
@@ -337,7 +342,10 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
         const updatedAbove = updatedLessons.find((l) => l.id === above.id)!;
         upsertSupabaseLesson(courseId, c.title, updatedCurrent).catch(() => {});
         upsertSupabaseLesson(courseId, c.title, updatedAbove).catch(() => {});
-        return { ...c, lessons: updatedLessons };
+        // Darslar ro'yxatini ham "order" bo'yicha qayta saralaymiz, aks holda
+        // ekranda darslar joyi vizual ravishda almashmay qoladi.
+        const sortedLessons = [...updatedLessons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        return { ...c, lessons: sortedLessons };
       })
     );
   };
@@ -362,7 +370,8 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
         const updatedBelow = updatedLessons.find((l) => l.id === below.id)!;
         upsertSupabaseLesson(courseId, c.title, updatedCurrent).catch(() => {});
         upsertSupabaseLesson(courseId, c.title, updatedBelow).catch(() => {});
-        return { ...c, lessons: updatedLessons };
+        const sortedLessons = [...updatedLessons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        return { ...c, lessons: sortedLessons };
       })
     );
   };
