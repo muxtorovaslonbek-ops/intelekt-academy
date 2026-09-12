@@ -19,6 +19,7 @@ import {
 
 import { ActiveRoute } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { useFeedback } from '../../context/FeedbackContext';
 import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface SidebarProps {
@@ -37,6 +38,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenContactModal,
 }) => {
   const { currentUser, logout } = useAuth();
+  const { getUserConversations, getUnseenCountForUser } = useFeedback();
+  const hasUnreadAdminReply = getUserConversations(currentUser?.id).some(
+    (thread) => getUnseenCountForUser(thread) > 0
+  );
 
   const menuItems: Array<{
     id: ActiveRoute | 'logout';
@@ -327,13 +332,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group cursor-pointer text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/80 shadow-sm"
                 >
                   <div className="flex items-center space-x-3 truncate">
-                    <span className="p-1 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300">
+                    <span className="relative p-1 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300">
                       <MessageSquarePlus className="w-4 h-4" />
+                      {hasUnreadAdminReply && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white dark:border-slate-900 animate-pulse" />
+                      )}
                     </span>
                     <span className="font-bold truncate">Admin bilan bog'lanish</span>
                   </div>
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-200/90 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200 shrink-0">
-                    Taklif & Fikr
+                  <span
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${
+                      hasUnreadAdminReply
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : 'bg-indigo-200/90 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200'
+                    }`}
+                  >
+                    {hasUnreadAdminReply ? 'Yangi javob' : 'Taklif & Fikr'}
                   </span>
                 </button>
               </div>
