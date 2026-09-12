@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "AI Future",
-  "short_name": "AI Future",
+  "name": "EduSAT Academy",
+  "short_name": "EduSAT Academy",
   "description": "Sun'iy Intellekt va zamonaviy IT ta'lim platformasi: kurslar, testlar va AI yordamchi.",
   "start_url": "/",
   "scope": "/",
@@ -28,12 +28,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ]
 }
