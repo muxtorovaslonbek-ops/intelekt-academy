@@ -42,6 +42,7 @@ export interface Lesson {
   attachments?: LessonAttachment[];
   description?: string;
   courseName?: string;
+  order?: number;
 }
 
 export interface Course {
@@ -59,6 +60,7 @@ export interface Course {
   introVideoUrl?: string;
   lessons: Lesson[];
   status: 'active' | 'draft';
+  order?: number;
 }
 
 export interface QuizQuestion {
