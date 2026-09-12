@@ -123,6 +123,14 @@ export interface Announcement {
 export type FeedbackType = 'suggestion' | 'request' | 'opinion' | 'comment' | 'complaint' | 'question';
 export type FeedbackStatus = 'new' | 'reviewed' | 'resolved';
 
+// A single message inside a murojaat (feedback/support) chat thread.
+export interface FeedbackChatMessage {
+  id: string;
+  sender: 'user' | 'admin';
+  text: string;
+  createdAt: string;
+}
+
 export interface FeedbackMessage {
   id: string;
   userId?: string;
@@ -138,6 +146,10 @@ export interface FeedbackMessage {
   adminReply?: string;
   adminRepliedAt?: string;
   createdAt: string;
+  // Full two-way chat thread between the user and the admin for this
+  // murojaat. Older records may not have this yet — code that reads it
+  // should fall back to `message`/`adminReply` (see ensureThreadMessages).
+  messages?: FeedbackChatMessage[];
 }
 
 export type ActiveRoute =
