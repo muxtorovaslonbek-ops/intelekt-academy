@@ -63,18 +63,32 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
   const isRejected = currentUser?.status === 'rejected';
   const isLocked = isPending || isRejected;
 
+  // Har bir kurs uchun alohida ochiq/qulf holatini aniqlash.
+  // Foydalanuvchi tasdiqlanmagan bo'lsa -> hammasi qulf.
+  // Tasdiqlangan va courseAccess === 'all' (yoki umuman belgilanmagan) bo'lsa -> hammasi ochiq.
+  // Tasdiqlangan va courseAccess massiv bo'lsa -> faqat shu ro'yxatdagi kurs id'lari ochiq.
+  const isCourseUnlocked = React.useCallback(
+    (course: Course): boolean => {
+      if (isLocked || !currentUser) return false;
+      const access = currentUser.courseAccess;
+      if (!access || access === 'all') return true;
+      return access.includes(course.id);
+    },
+    [isLocked, currentUser]
+  );
+
   // Synchronize with selectedCourseId from Dashboard or search
   React.useEffect(() => {
-    if (selectedCourseId && !isLocked) {
+    if (selectedCourseId) {
       const target = courses.find((c) => c.id === selectedCourseId);
-      if (target) {
+      if (target && isCourseUnlocked(target)) {
         setActiveCourse(target);
         if (target.lessons && target.lessons.length > 0) {
           setActiveLesson(target.lessons[0]);
         }
       }
     }
-  }, [selectedCourseId, courses, isLocked]);
+  }, [selectedCourseId, courses, isCourseUnlocked]);
 
   // Keep the open course and syllabus tied to the latest remote/local course data.
   React.useEffect(() => {
@@ -103,7 +117,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
   });
 
   const handleOpenCourse = (course: Course) => {
-    if (isLocked) return;
+    if (!isCourseUnlocked(course)) return;
     setActiveCourse(course);
     if (course.lessons && course.lessons.length > 0) {
       setActiveLesson(course.lessons[0]);
@@ -599,7 +613,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
 
       {/* Course Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCourses.map((course) => (
+        {filteredCourses.map((course) => {
+        const courseLocked = !isCourseUnlocked(course);
+        return (
           <div
             key={course.id}
             id={`course-card-${course.id}`}
@@ -629,7 +645,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
                     </span>
                   </div>
 
-                  {isLocked && (
+                  {courseLocked && (
                     <div className="absolute top-3 right-3 px-2 py-1 rounded-lg bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-bold flex items-center gap-1 shadow-md border border-amber-300/30">
                       <Lock className="w-3 h-3" />
                       <span>Qulflangan</span>
@@ -673,24 +689,33 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onNavigateToAdmin }) =
 
                 <NeonButton
                   onClick={() => handleOpenCourse(course)}
-                  disabled={isLocked}
+                  disabled={courseLocked}
                   variant="primary-gradient"
                   size="sm"
-                  pulse={!isLocked}
+                  pulse={!courseLocked}
                   leftIcon={
-                    isLocked ? (
+                    courseLocked ? (
                       <Lock className="w-3.5 h-3.5" />
                     ) : (
                       <Play className="w-3.5 h-3.5" />
                     )
                   }
                 >
-                  <span>{isPending ? 'Tasdiq Kutilmoqda' : isRejected ? 'Ariza Rad Etilgan' : 'Darsni Boshlash'}</span>
+                  <span>
+                    {isPending
+                      ? 'Tasdiq Kutilmoqda'
+                      : isRejected
+                      ? 'Ariza Rad Etilgan'
+                      : courseLocked
+                      ? 'Ushbu Kurs Qulflangan'
+                      : 'Darsni Boshlash'}
+                  </span>
                 </NeonButton>
               </div>
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );
