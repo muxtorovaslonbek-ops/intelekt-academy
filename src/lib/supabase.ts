@@ -196,16 +196,19 @@ export async function upsertSupabaseFeedback(feedback: FeedbackMessage): Promise
   try {
     const { error } = await supabase.from('feedback').upsert({
       id: feedback.id,
+      user_id: feedback.userId || null,
       user_name: feedback.userName,
       user_email: feedback.userEmail || null,
       user_phone: feedback.userPhone || null,
       user_telegram: feedback.userTelegram || null,
+      type: feedback.type || 'comment',
       subject: feedback.subject,
       message: feedback.message,
       rating: feedback.rating || null,
       status: feedback.status,
       admin_reply: feedback.adminReply || null,
       admin_replied_at: feedback.adminRepliedAt || null,
+      messages: feedback.messages && feedback.messages.length ? feedback.messages : [],
     });
     return !error;
   } catch (err) {
@@ -221,6 +224,7 @@ export async function updateSupabaseFeedback(feedbackId: string, updates: Partia
     ...(updates.status ? { status: updates.status } : {}),
     ...(updates.adminReply !== undefined ? { admin_reply: updates.adminReply } : {}),
     ...(updates.adminRepliedAt !== undefined ? { admin_replied_at: updates.adminRepliedAt } : {}),
+    ...(updates.messages !== undefined ? { messages: updates.messages } : {}),
   };
   const { error } = await supabase.from('feedback').update(payload).eq('id', feedbackId);
   return !error;
@@ -238,11 +242,12 @@ export async function fetchSupabaseFeedback(): Promise<FeedbackMessage[] | null>
   if (error || !data) return null;
   return data.map((item) => ({
     id: item.id,
+    userId: item.user_id || undefined,
     userName: item.user_name || '',
     userEmail: item.user_email || undefined,
     userPhone: item.user_phone || undefined,
     userTelegram: item.user_telegram || undefined,
-    type: 'comment' as FeedbackMessage['type'],
+    type: (item.type as FeedbackMessage['type']) || 'comment',
     subject: item.subject || '',
     message: item.message || '',
     rating: item.rating || undefined,
@@ -250,6 +255,7 @@ export async function fetchSupabaseFeedback(): Promise<FeedbackMessage[] | null>
     adminReply: item.admin_reply || undefined,
     adminRepliedAt: item.admin_replied_at || undefined,
     createdAt: item.created_at || new Date().toISOString(),
+    messages: Array.isArray(item.messages) ? item.messages : [],
   }));
 }
 
