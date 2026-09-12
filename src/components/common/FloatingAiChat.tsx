@@ -62,6 +62,9 @@ export const FloatingAiChat: React.FC = () => {
       if (currentUser?.status === 'pending') {
         return `Hurmatli ${currentUser.firstName}, sizning akkauntingiz hozirda "Kutilmoqda" (Pending) holatida. Platforma ma'murlari (Admin) arizangizni tasdiqlaganidan (Approved) so'ng barcha himoyalangan video darslar to'liq ochiladi. Iltimos, admin javobini kuting.`;
       }
+      if (currentUser?.status === 'rejected') {
+        return `Hurmatli ${currentUser.firstName}, afsuski sizning arizangiz administrator tomonidan rad etilgan. Shu sabab video darslar va testlar hozircha yopiq. Aniqlik kiritish uchun administrator bilan bog'laning.`;
+      }
       return `Darslarimiz xavfsiz Bunny.net CDN va dinamik suv belgisi (anti-piracy watermark) orqali uzatiladi. Har qanday qurilmada yuqori sifatda tomosha qilishingiz mumkin.`;
     }
 
