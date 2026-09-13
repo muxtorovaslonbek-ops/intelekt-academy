@@ -674,7 +674,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prev.map((u) => {
         if (u.id === userId) {
           const updated = { ...u, status: 'approved' as UserStatus, courseAccess };
-          adminAction('updateUserProfile', { id: userId, updates: { status: 'approved' } }).catch(() => {});
+          adminAction('updateUserProfile', {
+            id: userId,
+            updates: { status: 'approved', course_access: courseAccess },
+          }).catch(() => {});
           return updated;
         }
         return u;
