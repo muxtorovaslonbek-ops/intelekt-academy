@@ -137,7 +137,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
           return;
         }
 
-        const res = loginAsAdminWithCredentials(adminLogin.trim(), adminPassword.trim());
+        const res = await loginAsAdminWithCredentials(adminLogin.trim(), adminPassword.trim());
         if (res.success) {
           setSuccessMsg("Administrator sifatida muvaffaqiyatli kirdingiz!");
           setTimeout(() => {
