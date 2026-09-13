@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Course, Lesson } from '../types';
 import { FeedbackMessage, Announcement } from '../types';
+import { adminAction } from './adminApi';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -99,95 +100,74 @@ export async function fetchSupabaseProfiles(): Promise<User[] | null> {
 }
 
 // Helper: Save/Sync course to Supabase `courses` table
+// XAVFSIZLIK: bu endi to'g'ridan-to'g'ri Supabase'ga emas, xavfsiz admin
+// backendiga (/api/admin/action) yoziladi, chunki kurslarni yaratish/
+// o'zgartirish faqat administratorga tegishli amal.
 export async function upsertSupabaseCourse(course: Course): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
 
-  try {
-    const { error } = await supabase.from('courses').upsert({
-      id: course.id,
-      title: course.title,
-      category: course.category,
-      level: course.level,
-      duration: course.duration,
-      lessons_count: course.lessonsCount,
-      rating: course.rating,
-      instructor: course.instructor,
-      description: course.description,
-      thumbnail: course.thumbnail,
-      status: course.status,
-      order_index: course.order ?? 0,
-      updated_at: new Date().toISOString(),
-    });
-    return !error;
-  } catch (err) {
-    console.warn('Course sync error:', err);
-    return false;
-  }
+  const result = await adminAction('upsertCourse', {
+    id: course.id,
+    title: course.title,
+    category: course.category,
+    level: course.level,
+    duration: course.duration,
+    lessons_count: course.lessonsCount,
+    rating: course.rating,
+    instructor: course.instructor,
+    description: course.description,
+    thumbnail: course.thumbnail,
+    status: course.status,
+    order_index: course.order ?? 0,
+    updated_at: new Date().toISOString(),
+  });
+  if (!result.ok) console.warn('Course sync error:', result.error);
+  return result.ok;
 }
 
 // Helper: Save lesson into Supabase `lessons` table
 export async function upsertSupabaseLesson(courseId: string, courseName: string, lesson: Lesson): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
 
-  try {
-    const { error } = await supabase.from('lessons').upsert({
-      id: lesson.id,
-      course_id: courseId,
-      course_name: courseName,
-      title: lesson.title,
-      description: lesson.description || '',
-      duration: lesson.duration,
-      bunny_video_id: lesson.bunnyVideoId || '',
-      library_id: lesson.libraryId || '',
-      video_url: lesson.videoUrl || null,
-      video_name: lesson.videoName || null,
-      pdf_url: lesson.pdfUrl || null,
-      pdf_name: lesson.pdfName || null,
-      image_url: lesson.imageUrl || null,
-      image_name: lesson.imageName || null,
-      attachments: lesson.attachments || [],
-      order_index: lesson.order ?? 0,
-      updated_at: new Date().toISOString(),
-    });
-    return !error;
-  } catch (err) {
-    console.warn('Lesson sync error:', err);
-    return false;
-  }
+  const result = await adminAction('upsertLesson', {
+    id: lesson.id,
+    course_id: courseId,
+    course_name: courseName,
+    title: lesson.title,
+    description: lesson.description || '',
+    duration: lesson.duration,
+    bunny_video_id: lesson.bunnyVideoId || '',
+    library_id: lesson.libraryId || '',
+    video_url: lesson.videoUrl || null,
+    video_name: lesson.videoName || null,
+    pdf_url: lesson.pdfUrl || null,
+    pdf_name: lesson.pdfName || null,
+    image_url: lesson.imageUrl || null,
+    image_name: lesson.imageName || null,
+    attachments: lesson.attachments || [],
+    order_index: lesson.order ?? 0,
+    updated_at: new Date().toISOString(),
+  });
+  if (!result.ok) console.warn('Lesson sync error:', result.error);
+  return result.ok;
 }
 
 // Helper: Delete course from Supabase `courses` table
 export async function deleteSupabaseCourse(courseId: string): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
 
-  try {
-    const { error } = await supabase.from('courses').delete().eq('id', courseId);
-    if (error) {
-      console.warn('Course delete error:', error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('Course delete error:', err);
-    return false;
-  }
+  const result = await adminAction('deleteCourse', { id: courseId });
+  if (!result.ok) console.warn('Course delete error:', result.error);
+  return result.ok;
 }
 
 // Helper: Delete lesson from Supabase `lessons` table
 export async function deleteSupabaseLesson(lessonId: string): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
 
-  try {
-    const { error } = await supabase.from('lessons').delete().eq('id', lessonId);
-    if (error) {
-      console.warn('Lesson delete error:', error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('Lesson delete error:', err);
-    return false;
-  }
+  const result = await adminAction('deleteLesson', { id: lessonId });
+  if (!result.ok) console.warn('Lesson delete error:', result.error);
+  return result.ok;
 }
 
 export async function upsertSupabaseFeedback(feedback: FeedbackMessage): Promise<{ ok: boolean; error?: string }> {
@@ -218,6 +198,9 @@ export async function upsertSupabaseFeedback(feedback: FeedbackMessage): Promise
   }
 }
 
+// XAVFSIZLIK: Admin javobi/holatini o'zgartirish endi xavfsiz backend orqali.
+// Talabaning fikr YOZISHI (yuqoridagi upsertSupabaseFeedback) ochiq qoladi,
+// lekin uni O'ZGARTIRISH faqat administratorga tegishli amal.
 export async function updateSupabaseFeedback(
   feedbackId: string,
   updates: Partial<FeedbackMessage>
@@ -230,20 +213,16 @@ export async function updateSupabaseFeedback(
     ...(updates.adminRepliedAt !== undefined ? { admin_replied_at: updates.adminRepliedAt } : {}),
     ...(updates.messages !== undefined ? { messages: updates.messages } : {}),
   };
-  try {
-    const { error } = await supabase.from('feedback').update(payload).eq('id', feedbackId);
-    if (error) console.error('[Feedback] update failed:', error.message, error);
-    return { ok: !error, error: error?.message };
-  } catch (err: any) {
-    console.error('[Feedback] update threw:', err);
-    return { ok: false, error: err?.message || String(err) };
-  }
+
+  const result = await adminAction('updateFeedback', { id: feedbackId, updates: payload });
+  if (!result.ok) console.error('[Feedback] update failed:', result.error);
+  return result;
 }
 
 export async function deleteSupabaseFeedback(feedbackId: string): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
-  const { error } = await supabase.from('feedback').delete().eq('id', feedbackId);
-  return !error;
+  const result = await adminAction('deleteFeedback', { id: feedbackId });
+  return result.ok;
 }
 
 export async function fetchSupabaseFeedback(): Promise<FeedbackMessage[] | null> {
@@ -270,10 +249,12 @@ export async function fetchSupabaseFeedback(): Promise<FeedbackMessage[] | null>
   }));
 }
 
+// XAVFSIZLIK: E'lon yaratish/o'zgartirish/o'chirish faqat administratorga
+// tegishli amal, shuning uchun xavfsiz backend orqali bajariladi.
 export async function upsertSupabaseAnnouncement(announcement: Announcement): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
 
-  const { error } = await supabase.from('announcements').upsert({
+  const result = await adminAction('upsertAnnouncement', {
     id: announcement.id,
     title: announcement.title,
     message: announcement.message,
@@ -281,7 +262,7 @@ export async function upsertSupabaseAnnouncement(announcement: Announcement): Pr
     author: announcement.author,
     is_pinned: announcement.isPinned || false,
   });
-  return !error;
+  return result.ok;
 }
 
 export async function updateSupabaseAnnouncement(id: string, updates: Partial<Announcement>): Promise<boolean> {
@@ -292,14 +273,14 @@ export async function updateSupabaseAnnouncement(id: string, updates: Partial<An
     ...(updates.category !== undefined ? { category: updates.category } : {}),
     ...(updates.isPinned !== undefined ? { is_pinned: updates.isPinned } : {}),
   };
-  const { error } = await supabase.from('announcements').update(payload).eq('id', id);
-  return !error;
+  const result = await adminAction('updateAnnouncement', { id, updates: payload });
+  return result.ok;
 }
 
 export async function deleteSupabaseAnnouncement(id: string): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
-  const { error } = await supabase.from('announcements').delete().eq('id', id);
-  return !error;
+  const result = await adminAction('deleteAnnouncement', { id });
+  return result.ok;
 }
 
 export async function fetchSupabaseAnnouncements(): Promise<Announcement[] | null> {
