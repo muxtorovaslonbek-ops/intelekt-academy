@@ -50,6 +50,15 @@ function MainApp() {
   const { isAuthenticated, currentUser } = useAuth();
   const [activeRoute, setActiveRouteState] = useState<ActiveRoute>(getInitialActiveRoute);
 
+  // Google/Supabase orqali kirgandan so'ng brauzer manzilida qolib qoladigan
+  // bo'sh "#" belgisini tozalaymiz (faqat ko'rinish uchun, boshqa hech
+  // narsaga — ma'lumotlarga yoki navigatsiyaga — ta'sir qilmaydi).
+  React.useEffect(() => {
+    if (window.location.hash === '#' || window.location.hash === '#/') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, []);
+
   const setActiveRoute = (route: ActiveRoute) => {
     setActiveRouteState(route);
     try {
