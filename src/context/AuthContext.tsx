@@ -7,6 +7,7 @@ import {
   upsertSupabaseProfile,
   fetchSupabaseProfiles,
 } from '../lib/supabase';
+import { adminLogin as adminApiLogin, adminAction, adminLogout as adminApiLogout } from '../lib/adminApi';
 
 export interface ProfileData {
   first_name?: string;
@@ -582,6 +583,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsers((prev) => [adminUser, ...prev.filter((u) => u.id !== adminUser.id && u.role !== 'admin')]);
     setCurrentUserId(adminUser.id);
     upsertSupabaseProfile(adminUser).catch(() => {});
+
+    // XAVFSIZLIK: haqiqiy admin sessiyasini serverdan olamiz. Server login/
+    // parolni o'z muhit o'zgaruvchilarida (Vercel Environment Variables)
+    // tekshiradi — bu qiymatlar brauzer kodida ko'rinmaydi. Shu token
+    // orqali keyinchalik kurs/e'lon/foydalanuvchi kabi imtiyozli
+    // amallarni xavfsiz bajarish mumkin bo'ladi.
+    adminApiLogin(cleanLogin, cleanPass).catch(() => {});
+
     return { success: true };
   };
 
@@ -602,7 +611,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUserId(null);
     }
     if (isSupabaseConfigured) {
-      supabase.from('profiles').delete().eq('id', userId).then();
+      // XAVFSIZLIK: foydalanuvchini o'chirish endi xavfsiz admin backend
+      // orqali (service role bilan) bajariladi, to'g'ridan-to'g'ri anon
+      // kalit bilan emas.
+      adminAction('deleteUserProfile', { id: userId }).catch(() => {});
     }
   };
 
@@ -610,6 +622,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       supabase.auth.signOut().catch(() => {});
     }
+    adminApiLogout();
     setCurrentUserId(null);
   };
 
@@ -631,7 +644,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prev.map((u) => {
         if (u.id === userId) {
           const updated = { ...u, ...updates };
-          upsertSupabaseProfile(updated);
+          // XAVFSIZLIK: boshqa foydalanuvchini (rol/holatini ham) o'zgartirish
+          // faqat administratorga tegishli amal — xavfsiz backend orqali.
+          adminAction('updateUserProfile', {
+            id: userId,
+            updates: {
+              first_name: updated.firstName,
+              last_name: updated.lastName,
+              phone_number: updated.phoneNumber,
+              email: updated.email,
+              telegram_handle: updated.telegramHandle,
+              role: updated.role,
+              status: updated.status,
+              avatar_url: updated.avatarUrl,
+              bio: updated.bio,
+            },
+          }).catch(() => {});
           return updated;
         }
         return u;
@@ -651,7 +679,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prev.map((u) => {
         if (u.id === userId) {
           const updated = { ...u, status: 'approved' as UserStatus, courseAccess };
-          upsertSupabaseProfile(updated);
+          adminAction('updateUserProfile', { id: userId, updates: { status: 'approved' } }).catch(() => {});
           return updated;
         }
         return u;
@@ -668,7 +696,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prev.map((u) => {
         if (u.id === userId) {
           const updated = { ...u, status: 'rejected' as UserStatus };
-          upsertSupabaseProfile(updated);
+          adminAction('updateUserProfile', { id: userId, updates: { status: 'rejected' } }).catch(() => {});
           return updated;
         }
         return u;
@@ -685,7 +713,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prev.map((u) => {
         if (u.id === userId) {
           const updated = { ...u, status, ...(role ? { role } : {}) };
-          upsertSupabaseProfile(updated);
+          adminAction('updateUserProfile', {
+            id: userId,
+            updates: { status, ...(role ? { role } : {}) },
+          }).catch(() => {});
           return updated;
         }
         return u;
