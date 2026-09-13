@@ -31,7 +31,7 @@ interface AuthContextType {
   loginWithGmail: (gmail: string, fullName?: string, phone?: string) => Promise<boolean>;
   loginWithTelegram: (telegramHandle: string, fullName?: string, phone?: string) => Promise<boolean>;
   loginAsAdmin: () => boolean;
-  loginAsAdminWithCredentials: (loginInput: string, passwordInput: string) => { success: boolean; error?: string };
+  loginAsAdminWithCredentials: (loginInput: string, passwordInput: string) => Promise<{ success: boolean; error?: string }>;
   register: (
     firstName: string,
     lastName: string,
@@ -544,22 +544,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const loginAsAdminWithCredentials = (
+  const loginAsAdminWithCredentials = async (
     loginInput: string,
     passwordInput: string
-  ): { success: boolean; error?: string } => {
+  ): Promise<{ success: boolean; error?: string }> => {
     const cleanLogin = loginInput.trim().toLowerCase();
     const cleanPass = passwordInput.trim();
 
-    // The user strictly requested: admin login: aslonbek0722, parol: aslonbek2207
-    const isValid =
-      (cleanLogin === 'aslonbek0722' || cleanLogin === 'muxtorovaslonbek@gmail.com') &&
-      cleanPass === 'aslonbek2207';
-
-    if (!isValid) {
+    // XAVFSIZLIK: login/parol endi bu yerda (brauzer kodida) TEKSHIRILMAYDI.
+    // Yagona haqiqat manbai — serverdagi /api/admin/login, u Vercel
+    // Environment Variables'dagi ADMIN_LOGIN / ADMIN_EMAIL / ADMIN_PASSWORD
+    // qiymatlarini tekshiradi. Shunday qilib, Vercel'da parolni
+    // o'zgartirsangiz, u darhol (keyingi deploy'dan so'ng) kuchga kiradi —
+    // eski parol bilan kirib bo'lmaydi.
+    const apiResult = await adminApiLogin(cleanLogin, cleanPass);
+    if (!apiResult.ok) {
       return {
         success: false,
-        error: "Noto'g'ri administrator login yoki parol kiritildi!",
+        error: apiResult.error || "Noto'g'ri administrator login yoki parol kiritildi!",
       };
     }
 
@@ -583,13 +585,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsers((prev) => [adminUser, ...prev.filter((u) => u.id !== adminUser.id && u.role !== 'admin')]);
     setCurrentUserId(adminUser.id);
     upsertSupabaseProfile(adminUser).catch(() => {});
-
-    // XAVFSIZLIK: haqiqiy admin sessiyasini serverdan olamiz. Server login/
-    // parolni o'z muhit o'zgaruvchilarida (Vercel Environment Variables)
-    // tekshiradi — bu qiymatlar brauzer kodida ko'rinmaydi. Shu token
-    // orqali keyinchalik kurs/e'lon/foydalanuvchi kabi imtiyozli
-    // amallarni xavfsiz bajarish mumkin bo'ladi.
-    adminApiLogin(cleanLogin, cleanPass).catch(() => {});
 
     return { success: true };
   };
